@@ -112,10 +112,14 @@ class ReviewAction(BaseModel):
     event_id: str
     action: str = Field(..., pattern="^(approve|reject)$")
     reviewer_notes: str = ""
+    edited_title: str = ""
+    edited_body: str = ""
 
 
 class KBDraftRequest(BaseModel):
-    ticket_number: str
+    ticket_number: str | None = None
+    event_id: str | None = None
+    question: str | None = None
 
 
 class KBDraft(BaseModel):

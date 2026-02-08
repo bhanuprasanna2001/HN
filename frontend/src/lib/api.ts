@@ -189,7 +189,7 @@ export function checkConfidence(question: string): Promise<ConfidenceCheck> {
 
 export interface Paginated<T> {
   data: T[];
-  meta: { total: number; page: number; page_size: number };
+  meta: { total: number; page: number; page_size: number; status_counts?: Record<string, number> };
 }
 
 export function fetchKBArticles(
@@ -257,6 +257,9 @@ export interface LearningEvent {
   reviewed_at?: string;
   best_kb_score?: number;
   best_kb_match?: string;
+  source_question?: string;
+  reported_confidence?: number;
+  draft?: KBDraft;
 }
 
 export function fetchLearningEvents(
@@ -275,8 +278,8 @@ export interface KBDraft {
   source_conversation: string;
   source_script: string;
   lineage: { source_type: string; source_id: string; relationship: string }[];
-  quality_score: number;
-  quality_notes: string;
+  quality_score?: number;
+  quality_notes?: string;
 }
 
 export interface DraftResponse {
@@ -286,10 +289,16 @@ export interface DraftResponse {
   script: Record<string, string> | null;
 }
 
-export function generateDraft(ticketNumber: string): Promise<DraftResponse> {
+export interface GenerateDraftRequest {
+  ticket_number?: string;
+  event_id?: string;
+  question?: string;
+}
+
+export function generateDraft(payload: GenerateDraftRequest): Promise<DraftResponse> {
   return request("/learning/generate-draft", {
     method: "POST",
-    body: JSON.stringify({ ticket_number: ticketNumber }),
+    body: JSON.stringify(payload),
   });
 }
 

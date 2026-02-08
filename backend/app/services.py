@@ -230,6 +230,22 @@ Rules:
 - Replace any real customer names with placeholders.
 - Structure: Problem → Cause → Resolution Steps → Verification."""
 
+KB_GEN_GAP_SYSTEM = """You are a knowledge-base author for enterprise property management support.
+Given ONLY a user question (no resolution), draft a KB article template that a reviewer can finalize.
+
+You MUST respond with valid JSON only. No markdown, no code fences, just JSON.
+{
+  "title": "Short descriptive title",
+  "body": "Full article body with sections. Use markdown formatting.",
+  "tags": "comma-separated relevant tags"
+}
+
+Rules:
+- Be specific to the question.
+- Include placeholders where resolution steps are missing.
+- Structure: Problem → Possible Cause → Resolution Steps → Verification.
+- Keep it short and editable."""
+
 
 def generate_kb_draft(
     ticket: dict,
@@ -279,6 +295,46 @@ def generate_kb_draft(
             "title": f"Resolution: {ticket.get('Subject', 'Unknown Issue')}",
             "body": raw,
             "tags": ticket.get("Tags", ""),
+        }
+
+
+def generate_kb_draft_from_gap(question: str, settings: Settings) -> dict[str, Any]:
+    """Generate a KB draft template from a gap question (no ticket)."""
+    q = (question or "").strip()
+    if not q:
+        return {
+            "title": "Draft: Untitled Knowledge Gap",
+            "body": "## Problem\n(Describe the issue)\n\n## Possible Cause\n(TBD)\n\n## Resolution Steps\n(TBD)\n\n## Verification\n(TBD)",
+            "tags": "",
+        }
+
+    if not settings.openai_api_key:
+        return {
+            "title": f"Draft: {q[:80]}",
+            "body": (
+                f"## Problem\n{q}\n\n"
+                "## Possible Cause\n(TBD — add root cause)\n\n"
+                "## Resolution Steps\n(TBD — add the final steps)\n\n"
+                "## Verification\n(TBD — add verification steps)"
+            ),
+            "tags": "",
+        }
+
+    client = OpenAI(api_key=settings.openai_api_key)
+    try:
+        raw = _call_llm(client, settings.openai_model, KB_GEN_GAP_SYSTEM, f"Question: {q}", json_mode=True)
+        return json.loads(raw.strip())
+    except Exception as e:
+        logger.warning("KB gap draft LLM failed: %s — using fallback", e)
+        return {
+            "title": f"Draft: {q[:80]}",
+            "body": (
+                f"## Problem\n{q}\n\n"
+                "## Possible Cause\n(TBD — add root cause)\n\n"
+                "## Resolution Steps\n(TBD — add the final steps)\n\n"
+                "## Verification\n(TBD — add verification steps)"
+            ),
+            "tags": "",
         }
 
 

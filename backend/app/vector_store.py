@@ -195,9 +195,14 @@ class VectorStore:
     def add_kb_article(self, article_id: str, text: str, metadata: dict) -> None:
         """Add a single KB article to the index (for self-learning loop)."""
         col = self._get_or_create(COL_KB)
-        col.add(
-            ids=[article_id],
-            documents=[text[:8000]],
-            metadatas=[metadata],
-        )
+        payload = {
+            "ids": [article_id],
+            "documents": [text[:8000]],
+            "metadatas": [metadata],
+        }
+        # Prefer upsert to avoid duplicate ID errors on re-review.
+        try:
+            col.upsert(**payload)
+        except AttributeError:
+            col.add(**payload)
         logger.info("Added new KB article %s to index", article_id)

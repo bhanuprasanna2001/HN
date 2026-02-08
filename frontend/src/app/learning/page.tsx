@@ -27,6 +27,11 @@ type FilterStatus = "" | "Pending" | "Approved" | "Rejected";
 export default function LearningPage() {
   const [events, setEvents] = useState<LearningEvent[]>([]);
   const [total, setTotal] = useState(0);
+  const [statusCounts, setStatusCounts] = useState<Record<"Pending" | "Approved" | "Rejected", number>>({
+    Pending: 0,
+    Approved: 0,
+    Rejected: 0,
+  });
   const [filter, setFilter] = useState<FilterStatus>("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -49,19 +54,36 @@ export default function LearningPage() {
       .then((res) => {
         setEvents(res.data);
         setTotal(res.meta.total);
+        const fallbackCounts = {
+          Pending: res.data.filter((e) => e.status === "Pending").length,
+          Approved: res.data.filter((e) => e.status === "Approved").length,
+          Rejected: res.data.filter((e) => e.status === "Rejected").length,
+        };
+        setStatusCounts(res.meta.status_counts ?? fallbackCounts);
       })
       .catch((e) => setError(e.message || "Failed to load events"))
       .finally(() => setLoading(false));
   }, [filter, page]);
 
-  async function handleGenerateDraft(ticketNumber: string) {
+  async function handleGenerateDraft(event: LearningEvent) {
     setDraftLoading(true);
     setDraft(null);
     setDraftError("");
     try {
-      const res = await generateDraft(ticketNumber);
+      const res = await generateDraft({
+        ticket_number: event.ticket_number || undefined,
+        event_id: event.event_id,
+        question: event.source_question || event.detected_gap,
+      });
       setDraft(res.data);
       setEditedDraftBody(res.data.body);
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.event_id === event.event_id
+            ? { ...e, draft: res.data, draft_summary: res.data.title || e.draft_summary }
+            : e,
+        ),
+      );
     } catch (e) {
       setDraftError(e instanceof Error ? e.message : "Failed to generate draft");
     } finally {
@@ -73,10 +95,24 @@ export default function LearningPage() {
     setReviewLoading(eventId);
     setReviewError("");
     try {
-      const res = await reviewEvent(eventId, action, reviewNotes);
+      const previousStatus = events.find((e) => e.event_id === eventId)?.status;
+      const res = await reviewEvent(
+        eventId,
+        action,
+        reviewNotes,
+        draft?.title ?? "",
+        editedDraftBody,
+      );
       setEvents((prev) =>
         prev.map((e) => (e.event_id === eventId ? { ...e, ...res.data } : e)),
       );
+      if (previousStatus && previousStatus !== res.data.status) {
+        setStatusCounts((prev) => ({
+          ...prev,
+          [previousStatus]: Math.max(0, (prev[previousStatus as "Pending" | "Approved" | "Rejected"] ?? 0) - 1),
+          [res.data.status]: (prev[res.data.status as "Pending" | "Approved" | "Rejected"] ?? 0) + 1,
+        }));
+      }
       setReviewNotes("");
 
       // Store approved KB ID in localStorage so the copilot can show a "NEW" badge
@@ -161,6 +197,12 @@ export default function LearningPage() {
               const evts = await fetchLearningEvents(filter, 1);
               setEvents(evts.data);
               setTotal(evts.meta.total);
+              const fallbackCounts = {
+                Pending: evts.data.filter((e) => e.status === "Pending").length,
+                Approved: evts.data.filter((e) => e.status === "Approved").length,
+                Rejected: evts.data.filter((e) => e.status === "Rejected").length,
+              };
+              setStatusCounts(evts.meta.status_counts ?? fallbackCounts);
               setPage(1);
             } catch (e) { setScanResult(`Scan failed: ${e instanceof Error ? e.message : "Unknown error"}`); }
             finally { setScanLoading(false); }
@@ -175,20 +217,23 @@ export default function LearningPage() {
 
       {/* Filters */}
       <div className="mb-4 flex items-center gap-2">
-        {(["", "Pending", "Approved", "Rejected"] as FilterStatus[]).map((s) => (
-          <button
-            key={s || "all"}
-            onClick={() => { setFilter(s); setPage(1); }}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-              filter === s
-                ? "bg-[var(--color-text)] text-[var(--color-bg)]"
-                : "border border-[var(--color-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)]",
-            )}
-          >
-            {s || "All"} {s === "Pending" && total > 0 ? `(${events.filter(e => e.status === "Pending").length})` : ""}
-          </button>
-        ))}
+        {(["", "Pending", "Approved", "Rejected"] as FilterStatus[]).map((s) => {
+          const count = s ? statusCounts[s] ?? 0 : total;
+          return (
+            <button
+              key={s || "all"}
+              onClick={() => { setFilter(s); setPage(1); }}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                filter === s
+                  ? "bg-[var(--color-text)] text-[var(--color-bg)]"
+                  : "border border-[var(--color-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)]",
+              )}
+            >
+              {s || "All"} {s ? `(${count})` : ""}
+            </button>
+          );
+        })}
         <span className="ml-auto text-xs text-[var(--color-text-muted)]">
           {total} events
         </span>
@@ -217,8 +262,16 @@ export default function LearningPage() {
                 {/* Event header */}
                 <button
                   onClick={() => {
-                    setExpandedId(isExpanded ? null : event.event_id);
-                    setDraft(null);
+                    if (isExpanded) {
+                      setExpandedId(null);
+                      setDraft(null);
+                      setEditedDraftBody("");
+                    } else {
+                      setExpandedId(event.event_id);
+                      const existingDraft = event.draft ?? null;
+                      setDraft(existingDraft);
+                      setEditedDraftBody(existingDraft?.body ?? "");
+                    }
                   }}
                   className="flex w-full items-center gap-3 p-4 text-left"
                 >
@@ -232,7 +285,7 @@ export default function LearningPage() {
                         {event.event_id}
                       </span>
                       <span className="font-mono text-[10px] text-[var(--color-text-muted)]">
-                        Ticket: {event.ticket_number}
+                        Ticket: {event.ticket_number || "N/A"}
                       </span>
                       {(event as unknown as Record<string, unknown>).best_kb_score !== undefined && (
                         <span className="font-mono text-[10px] text-[var(--color-error)]">
@@ -267,7 +320,7 @@ export default function LearningPage() {
                       </div>
                       <div>
                         <p className="font-medium text-[var(--color-text-muted)]">Proposed KB ID</p>
-                        <p className="mt-1 font-mono text-[var(--color-text)]">{event.proposed_kb_id}</p>
+                        <p className="mt-1 font-mono text-[var(--color-text)]">{event.proposed_kb_id || "TBD"}</p>
                       </div>
                       <div>
                         <p className="font-medium text-[var(--color-text-muted)]">Conversation</p>
@@ -276,10 +329,10 @@ export default function LearningPage() {
                     </div>
 
                     {/* Generate draft button */}
-                    {event.ticket_number && (
+                    {event.status === "Pending" && (
                       <div className="mt-4">
                         <button
-                          onClick={() => handleGenerateDraft(event.ticket_number)}
+                          onClick={() => handleGenerateDraft(event)}
                           disabled={draftLoading}
                           className="flex items-center gap-2 rounded-lg bg-[var(--color-text)] px-3 py-2 text-xs font-medium text-[var(--color-bg)] transition-opacity hover:opacity-90 disabled:opacity-50"
                         >
