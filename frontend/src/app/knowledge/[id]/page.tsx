@@ -8,6 +8,28 @@ import { fetchKBArticle, type KBArticleDetail } from "@/lib/api";
 import { Markdown } from "@/components/Markdown";
 import { nodeColor } from "@/lib/utils";
 
+/**
+ * Normalise raw body text so the Markdown renderer can parse it properly.
+ * Seed KB articles often have numbered steps jammed onto one line
+ * (e.g. "…sentence 1. Go to… 2. Click…"). We insert a newline before
+ * each "N. " that follows inline text, turning them into a real list.
+ */
+function normalizeBody(text: string): string {
+  let result = text;
+
+  // Insert newline before "N. <Uppercase>" when preceded by inline text
+  // e.g. "…Board 1. Go to…" → "…Board\n1. Go to…"
+  result = result.replace(/ (\d+\.) ([A-Z])/g, "\n$1 $2");
+
+  // Promote "How To:" / "Note:" / "Important:" lines into markdown headers
+  result = result.replace(
+    /(?:^|\n)(How To:|Note:|Important:|Tip:)\s*/g,
+    "\n\n### $1 ",
+  );
+
+  return result;
+}
+
 export default function ArticlePage() {
   const params = useParams();
   const id = params.id as string;
@@ -95,7 +117,7 @@ export default function ArticlePage() {
       {/* Article body */}
       <div className="card p-6 animate-fade-in-delay-1">
         <div className="prose-sm max-w-none">
-          <Markdown content={article.Body || "No content available."} />
+          <Markdown content={normalizeBody(article.Body || "No content available.")} />
         </div>
       </div>
 
