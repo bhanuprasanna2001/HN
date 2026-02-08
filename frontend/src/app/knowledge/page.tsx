@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Search, BookOpen, ChevronDown, X, Tag } from "lucide-react";
+import { Search, BookOpen, ChevronDown, X, Tag, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { fetchKnowledgeGraph, fetchKBArticles, type KnowledgeGraphData, type GraphNode } from "@/lib/api";
 import { KnowledgeGraph } from "@/components/KnowledgeGraph";
 import { cn, truncate, nodeColor } from "@/lib/utils";
@@ -113,6 +114,14 @@ export default function KnowledgePage() {
               ))}
             </div>
           )}
+          {selectedNode.group === "kb_article" && (
+            <Link
+              href={`/knowledge/${encodeURIComponent(selectedNode.id)}`}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-text)] px-3 py-1.5 text-[11px] font-medium text-[var(--color-bg)] transition-opacity hover:opacity-90"
+            >
+              View Article <ArrowRight size={12} />
+            </Link>
+          )}
         </div>
       )}
 
@@ -193,16 +202,24 @@ export default function KnowledgePage() {
                           </p>
                         ))}
                       </div>
-                      {art.Tags && (
-                        <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--color-border)] pt-3">
-                          <Tag size={12} className="text-[var(--color-text-muted)]" />
-                          {String(art.Tags).split(",").map((tag: string) => (
-                            <span key={tag.trim()} className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">
-                              {tag.trim()}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <div className="mt-3 flex items-center justify-between border-t border-[var(--color-border)] pt-3">
+                        {art.Tags ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Tag size={12} className="text-[var(--color-text-muted)]" />
+                            {String(art.Tags).split(",").map((tag: string) => (
+                              <span key={tag.trim()} className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">
+                                {tag.trim()}
+                              </span>
+                            ))}
+                          </div>
+                        ) : <div />}
+                        <Link
+                          href={`/knowledge/${encodeURIComponent(art.KB_Article_ID)}`}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-text)] px-3 py-1.5 text-[11px] font-medium text-[var(--color-bg)] transition-opacity hover:opacity-90"
+                        >
+                          View Full Article <ArrowRight size={12} />
+                        </Link>
+                      </div>
                     </div>
                   )}
                 </div>

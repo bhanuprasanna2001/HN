@@ -1,4 +1,4 @@
-"""SupportMind AI — FastAPI backend."""
+"""Speare AI — FastAPI backend."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ state: dict[str, Any] = {}
 async def lifespan(app: FastAPI):
     """Load data and build vector index on startup."""
     settings = get_settings()
-    logger.info("Starting SupportMind AI backend")
+    logger.info("Starting Speare AI backend")
 
     data = load_workbook_data(settings.data_path)
     state["data"] = data
@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI):
                  len(data.get("Scripts_Master", [])),
                  len(data.get("Tickets", [])))
     yield
-    logger.info("Shutting down SupportMind AI backend")
+    logger.info("Shutting down Speare AI backend")
 
 
 def _init_learning_events(data: dict) -> list[dict]:
@@ -108,7 +108,7 @@ def _init_learning_events(data: dict) -> list[dict]:
 # App
 # ---------------------------------------------------------------------------
 app = FastAPI(
-    title="SupportMind AI",
+    title="Speare AI",
     description="Self-learning intelligence layer for customer support",
     version="1.0.0",
     lifespan=lifespan,
@@ -272,6 +272,25 @@ async def get_knowledge_graph(limit: int = Query(300, ge=10, le=500)):
         count += 1
 
     return KnowledgeGraphData(nodes=list(nodes_map.values()), links=links)
+
+
+@app.get("/api/knowledge/articles/{article_id}")
+async def get_kb_article(article_id: str):
+    """Get a single KB article by ID with its lineage connections."""
+    article = state["kb_articles"].get(article_id)
+    if not article:
+        raise HTTPException(404, f"Article {article_id} not found")
+
+    lineage: list[dict[str, str]] = []
+    for row in state["data"].get("KB_Lineage", []):
+        if row.get("KB_Article_ID") == article_id:
+            lineage.append({
+                "source_id": row.get("Source_ID", ""),
+                "source_type": row.get("Source_Type", ""),
+                "relationship": row.get("Relationship", ""),
+            })
+
+    return {"data": {**article, "lineage": lineage}}
 
 
 # ---------------------------------------------------------------------------

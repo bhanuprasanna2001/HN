@@ -12,7 +12,7 @@ _ENV_FILE = str(_PROJECT_ROOT / ".env") if (_PROJECT_ROOT / ".env").exists() els
 
 
 class Settings(BaseSettings):
-    """Central configuration for the SupportMind backend."""
+    """Central configuration for the Speare AI backend."""
 
     # OpenAI
     openai_api_key: str = ""

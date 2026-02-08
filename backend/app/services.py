@@ -67,7 +67,7 @@ def _call_llm(
 # RAG Copilot
 # ---------------------------------------------------------------------------
 
-COPILOT_SYSTEM = """You are SupportMind AI, an expert support copilot for property management software.
+COPILOT_SYSTEM = """You are Speare AI, an expert support copilot for property management software.
 Given the user's question and relevant source documents, provide a clear, accurate answer.
 
 Rules:

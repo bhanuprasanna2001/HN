@@ -1,14 +1,14 @@
-# SupportMind AI
+# Speare AI
 
 **The Self-Learning Brain for Customer Support**
 
-> Built for the RealPage SupportMind AI Hackathon Challenge — a self-learning intelligence layer that continuously reads customer interactions, extracts operational knowledge, and guides both humans and AI agents in real time.
+> Built for the RealPage Speare AI Hackathon Challenge — a self-learning intelligence layer that continuously reads customer interactions, extracts operational knowledge, and guides both humans and AI agents in real time.
 
 ---
 
 ## What It Does
 
-SupportMind AI transforms customer support from a **reactive cost center** into a **living operating system for trust**. It does this through four core capabilities:
+Speare AI transforms customer support from a **reactive cost center** into a **living operating system for trust**. It does this through four core capabilities:
 
 | Capability | What Happens |
 |---|---|

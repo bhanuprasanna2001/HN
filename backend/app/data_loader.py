@@ -1,4 +1,4 @@
-"""Load and parse the SupportMind Excel workbook into structured dicts."""
+"""Load and parse the Speare AI Excel workbook into structured dicts."""
 
 from __future__ import annotations
 

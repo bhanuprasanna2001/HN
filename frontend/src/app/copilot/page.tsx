@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, AlertCircle, Trash2, Info, ChevronDown, ExternalLink } from "lucide-react";
+import { Send, Bot, User, AlertCircle, Trash2, Info, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { askCopilot, reportGapFromCopilot, type CopilotResponse, type SourceDocument } from "@/lib/api";
 import { cn, truncate, nodeColor } from "@/lib/utils";
 
@@ -14,15 +15,13 @@ interface Message {
   loading?: boolean;
 }
 
-function SourceCard({ source, onSelect }: { source: SourceDocument; onSelect: (s: SourceDocument) => void }) {
+function SourceCard({ source }: { source: SourceDocument }) {
   const color = nodeColor(source.doc_type);
   const typeLabel = source.doc_type === "kb_article" ? "KB Article" : source.doc_type === "script" ? "Script" : "Ticket";
+  const isKB = source.doc_type === "kb_article";
 
-  return (
-    <button
-      onClick={() => onSelect(source)}
-      className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 text-left transition-colors hover:border-[var(--color-text-dim)]"
-    >
+  const inner = (
+    <>
       <div className="flex items-center gap-2">
         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
         <span className="font-mono text-[10px] text-[var(--color-text-muted)]">{typeLabel}</span>
@@ -32,42 +31,25 @@ function SourceCard({ source, onSelect }: { source: SourceDocument; onSelect: (s
       <p className="mt-1 text-[11px] leading-relaxed text-[var(--color-text-muted)]">{truncate(source.snippet, 180)}</p>
       <div className="mt-2 flex items-center gap-1.5">
         <span className="font-mono text-[9px] text-[var(--color-text-dim)]">{source.id}</span>
-        <ExternalLink size={9} className="ml-auto text-[var(--color-text-dim)]" />
+        {isKB && <ExternalLink size={9} className="ml-auto text-[var(--color-text-dim)]" />}
       </div>
-    </button>
+    </>
   );
-}
 
-function SourceDetailPanel({ source, onClose }: { source: SourceDocument; onClose: () => void }) {
-  const color = nodeColor(source.doc_type);
-  const typeLabel = source.doc_type === "kb_article" ? "KB Article" : source.doc_type === "script" ? "Script" : "Ticket";
+  if (isKB) {
+    return (
+      <Link
+        href={`/knowledge/${encodeURIComponent(source.id)}`}
+        className="block rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 transition-colors hover:border-[var(--color-text-dim)]"
+      >
+        {inner}
+      </Link>
+    );
+  }
 
   return (
-    <div className="animate-fade-in rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
-          <span className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">{typeLabel}</span>
-          <span className="font-mono text-[10px] text-[var(--color-text-dim)]">{(source.score * 100).toFixed(0)}% match</span>
-        </div>
-        <button onClick={onClose} className="text-[var(--color-text-dim)] hover:text-[var(--color-text)]">
-          <ChevronDown size={14} />
-        </button>
-      </div>
-      <p className="mt-3 text-sm font-semibold text-[var(--color-text)]">{source.title || source.id}</p>
-      <p className="mt-0.5 font-mono text-[10px] text-[var(--color-text-dim)]">{source.id}</p>
-      <div className="mt-3 rounded-lg bg-[var(--color-bg)] p-3">
-        <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">{source.snippet}</p>
-      </div>
-      {source.metadata && Object.keys(source.metadata).length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {Object.entries(source.metadata).filter(([, v]) => v).map(([k, v]) => (
-            <span key={k} className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-dim)]">
-              {k}: {v}
-            </span>
-          ))}
-        </div>
-      )}
+    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3">
+      {inner}
     </div>
   );
 }
@@ -77,7 +59,6 @@ export default function CopilotPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [selectedSource, setSelectedSource] = useState<SourceDocument | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   // Load from localStorage on mount
@@ -102,7 +83,6 @@ export default function CopilotPage() {
 
   function clearHistory() {
     setMessages([]);
-    setSelectedSource(null);
     localStorage.removeItem(STORAGE_KEY);
   }
 
@@ -110,7 +90,6 @@ export default function CopilotPage() {
     const q = input.trim();
     if (!q || loading) return;
     setInput("");
-    setSelectedSource(null);
     setMessages((p) => [...p, { role: "user", content: q }]);
     setLoading(true);
     setMessages((p) => [...p, { role: "assistant", content: "", loading: true }]);
@@ -233,7 +212,7 @@ export default function CopilotPage() {
                         <p className="mb-2 font-mono text-[9px] tracking-widest text-[var(--color-text-dim)]">SOURCES</p>
                         <div className="grid gap-2 sm:grid-cols-2">
                           {msg.response.sources.map((src) => (
-                            <SourceCard key={src.id} source={src} onSelect={setSelectedSource} />
+                            <SourceCard key={src.id} source={src} />
                           ))}
                         </div>
                       </div>
@@ -251,13 +230,6 @@ export default function CopilotPage() {
           <div ref={endRef} />
         </div>
       </div>
-
-      {/* Source detail panel */}
-      {selectedSource && (
-        <div className="shrink-0 pb-3">
-          <SourceDetailPanel source={selectedSource} onClose={() => setSelectedSource(null)} />
-        </div>
-      )}
 
       {/* Input - pinned to bottom */}
       <div className="shrink-0 border-t border-[var(--color-border)] pt-4">
