@@ -44,10 +44,10 @@ interface QAResult {
 
 function SeverityBadge({ severity }: { severity: string }) {
   const styles: Record<string, string> = {
-    CRITICAL: "bg-red-100 text-red-800 border-red-200",
-    HIGH: "bg-orange-100 text-orange-800 border-orange-200",
-    MEDIUM: "bg-amber-100 text-amber-800 border-amber-200",
-    LOW: "bg-blue-100 text-blue-800 border-blue-200",
+    CRITICAL: "bg-red-950 text-red-400 border-red-800",
+    HIGH: "bg-orange-950 text-orange-400 border-orange-800",
+    MEDIUM: "bg-amber-950 text-amber-400 border-amber-800",
+    LOW: "bg-blue-950 text-blue-400 border-blue-800",
   };
   return <span className={cn("badge border", styles[severity] ?? styles.LOW)}>{severity}</span>;
 }
@@ -60,7 +60,7 @@ function ScoreRing({ score }: { score: string }) {
   return (
     <div className="relative flex h-16 w-16 items-center justify-center">
       <svg className="absolute" width={56} height={56} viewBox="0 0 56 56">
-        <circle cx={28} cy={28} r={24} fill="none" stroke="#F0F0F0" strokeWidth={3} />
+        <circle cx={28} cy={28} r={24} fill="none" stroke="#333333" strokeWidth={3} />
         <circle cx={28} cy={28} r={24} fill="none" stroke={color} strokeWidth={3}
           strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={off}
           transform="rotate(-90 28 28)" style={{ transition: "stroke-dashoffset 1s ease-out" }} />
@@ -155,10 +155,11 @@ export default function QAPage() {
 
   return (
     <>
-      <div className="mb-6 animate-fade-in">
-        <h1 className="text-2xl font-bold text-[var(--color-text)]">QA & Compliance</h1>
+      <div className="mb-8 animate-fade-in">
+        <p className="font-mono text-[10px] tracking-widest text-[var(--color-text-dim)]">QA & COMPLIANCE</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-[var(--color-text)]">Quality Scoring</h1>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-          Score interactions for quality using the QA rubric and scan for OWASP compliance violations
+          Score interactions using the QA rubric + OWASP compliance checks
         </p>
       </div>
 
@@ -166,14 +167,14 @@ export default function QAPage() {
       <div className="card mb-6 animate-fade-in-delay-1 overflow-hidden">
         <div className="flex items-center gap-3 border-b border-[var(--color-border)] px-5 py-3">
           <h2 className="text-sm font-bold text-[var(--color-text)]">Select a Ticket to Score</h2>
-          <span className="badge bg-neutral-100 text-[var(--color-text-muted)]">{total} closed</span>
+          <span className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">{total} closed</span>
           <div className="relative ml-auto w-64">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Search tickets…"
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] py-2 pl-9 pr-3 text-xs placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] py-2 pl-9 pr-3 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:border-[var(--color-text-dim)] focus:outline-none"
             />
           </div>
         </div>
@@ -186,11 +187,11 @@ export default function QAPage() {
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all",
                 selectedTicket === tk.Ticket_Number
-                  ? "border-[var(--color-primary)] bg-purple-50 shadow-sm"
-                  : "border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-neutral-50",
+                  ? "border-[var(--color-text-dim)] bg-[var(--color-surface-elevated)]"
+                  : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-text-dim)]",
               )}
             >
-              <FileText size={13} className={cn("shrink-0", selectedTicket === tk.Ticket_Number ? "text-[var(--color-primary)]" : "text-emerald-500")} />
+              <FileText size={13} className={cn("shrink-0", selectedTicket === tk.Ticket_Number ? "text-[var(--color-text)]" : "text-[var(--color-text-dim)]")} />
               <div>
                 <p className="max-w-48 text-[11px] font-medium text-[var(--color-text)]">{truncate(tk.Subject || tk.Ticket_Number, 35)}</p>
                 <p className="font-mono text-[9px] text-[var(--color-text-muted)]">{tk.Ticket_Number}</p>
@@ -233,9 +234,9 @@ export default function QAPage() {
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 {qaResult.QA_Recommendation && (
                   <span className={cn("badge font-semibold",
-                    qaResult.QA_Recommendation === "Keep doing" ? "bg-emerald-100 text-emerald-700" :
-                    qaResult.QA_Recommendation === "Coaching needed" ? "bg-amber-100 text-amber-700" :
-                    "bg-red-100 text-red-700",
+                    qaResult.QA_Recommendation === "Keep doing" ? "bg-emerald-950 text-[var(--color-success)]" :
+                    qaResult.QA_Recommendation === "Coaching needed" ? "bg-amber-950 text-[var(--color-warning)]" :
+                    "bg-red-950 text-[var(--color-error)]",
                   )}>{qaResult.QA_Recommendation}</span>
                 )}
               </div>
@@ -258,11 +259,11 @@ export default function QAPage() {
             <div className="grid grid-cols-2 gap-4">
               {qaResult.Red_Flags && (
                 <div className="card overflow-hidden">
-                  <div className="flex items-center gap-2 bg-red-50 px-5 py-3">
-                    <ShieldAlert size={16} className="text-red-600" />
+                  <div className="flex items-center gap-2 bg-red-950/50 px-5 py-3">
+                    <ShieldAlert size={16} className="text-[var(--color-error)]" />
                     <div>
-                      <h4 className="text-xs font-bold text-red-800">Red Flags</h4>
-                      <p className="text-[10px] text-red-600">If any flag is &quot;Yes&quot;, overall score becomes 0%</p>
+                      <h4 className="text-xs font-bold text-[var(--color-error)]">Red Flags</h4>
+                      <p className="text-[10px] text-red-400">If any flag is &quot;Yes&quot;, overall score becomes 0%</p>
                     </div>
                   </div>
                   <div className="divide-y divide-[var(--color-border)]">
@@ -275,7 +276,7 @@ export default function QAPage() {
                         ) : (
                           <div className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-neutral-200 text-[8px]">–</div>
                         )}
-                        <span className={cn("font-medium", val.score === "Yes" ? "text-red-700" : "text-[var(--color-text)]")}>
+                        <span className={cn("font-medium", val.score === "Yes" ? "text-[var(--color-error)]" : "text-[var(--color-text)]")}>
                           {key.replace(/_/g, " ")}
                         </span>
                       </div>
@@ -286,10 +287,10 @@ export default function QAPage() {
 
               {qaResult.owasp_checks && (
                 <div className="card overflow-hidden">
-                  <div className={cn("flex items-center gap-2 px-5 py-3", qaResult.owasp_checks.compliant ? "bg-emerald-50" : "bg-red-50")}>
-                    {qaResult.owasp_checks.compliant ? <ShieldCheck size={16} className="text-emerald-600" /> : <ShieldAlert size={16} className="text-red-600" />}
+                  <div className={cn("flex items-center gap-2 px-5 py-3", qaResult.owasp_checks.compliant ? "bg-emerald-950/50" : "bg-red-950/50")}>
+                    {qaResult.owasp_checks.compliant ? <ShieldCheck size={16} className="text-[var(--color-success)]" /> : <ShieldAlert size={16} className="text-[var(--color-error)]" />}
                     <div>
-                      <h4 className={cn("text-xs font-bold", qaResult.owasp_checks.compliant ? "text-emerald-800" : "text-red-800")}>
+                      <h4 className={cn("text-xs font-bold", qaResult.owasp_checks.compliant ? "text-[var(--color-success)]" : "text-[var(--color-error)]")}>
                         OWASP Compliance
                       </h4>
                       <div className="flex gap-1.5">
@@ -312,14 +313,14 @@ export default function QAPage() {
                   {qaResult.owasp_checks.findings.length > 0 && (
                     <div className="border-t border-[var(--color-border)] px-5 py-3 space-y-2">
                       {qaResult.owasp_checks.findings.map((f, i) => (
-                        <div key={i} className="rounded-lg border border-red-100 bg-red-50/50 p-2.5">
+                        <div key={i} className="rounded-lg border border-red-900 bg-red-950/30 p-2.5">
                           <div className="flex items-center gap-2">
-                            <AlertTriangle size={12} className="text-red-500" />
-                            <span className="text-[11px] font-semibold text-red-800">{f.category}</span>
+                            <AlertTriangle size={12} className="text-[var(--color-error)]" />
+                            <span className="text-[11px] font-semibold text-[var(--color-error)]">{f.category}</span>
                             <SeverityBadge severity={f.severity} />
                           </div>
-                          <p className="mt-1 text-[11px] text-red-700">{f.description}</p>
-                          <p className="mt-0.5 font-mono text-[10px] text-red-400">{f.owasp_ref}</p>
+                          <p className="mt-1 text-[11px] text-red-300">{f.description}</p>
+                          <p className="mt-0.5 font-mono text-[10px] text-red-500">{f.owasp_ref}</p>
                         </div>
                       ))}
                     </div>
@@ -329,9 +330,9 @@ export default function QAPage() {
             </div>
           </div>
         ) : (
-          <div className="card flex h-48 flex-col items-center justify-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-purple">
-              <ShieldCheck size={24} strokeWidth={1.4} className="text-purple-600" />
+            <div className="card flex h-48 flex-col items-center justify-center gap-3">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-surface-elevated)]">
+              <ShieldCheck size={24} strokeWidth={1.4} className="text-[var(--color-text-dim)]" />
             </div>
             <p className="text-sm font-medium text-[var(--color-text)]">Select a ticket above to run QA scoring</p>
             <p className="max-w-md text-center text-xs text-[var(--color-text-muted)]">

@@ -55,7 +55,7 @@ export function Markdown({ content }: { content: string }) {
     } else if (line.startsWith("- ")) {
       elements.push(
         <div key={i} className="flex gap-2 py-0.5 text-[13px] text-[var(--color-text)]">
-          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-primary)]" />
+          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-text-muted)]" />
           <InlineMarkdown text={line.slice(2)} />
         </div>,
       );
@@ -91,7 +91,7 @@ function InlineMarkdown({ text }: { text: string }) {
       parts.push(<em key={match.index}>{match[4]}</em>);
     } else if (match[6]) {
       parts.push(
-        <code key={match.index} className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-[12px] text-[var(--color-primary)]">
+        <code key={match.index} className="rounded bg-[var(--color-surface-elevated)] px-1 py-0.5 font-mono text-[12px] text-[var(--color-text)]">
           {match[6]}
         </code>,
       );

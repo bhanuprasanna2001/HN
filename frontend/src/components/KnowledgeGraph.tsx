@@ -156,8 +156,8 @@ export function KnowledgeGraph({ nodes, links, width, height, onNodeClick }: Pro
         ctx.beginPath();
         ctx.moveTo(l.source.x, l.source.y);
         ctx.lineTo(l.target.x, l.target.y);
-        ctx.strokeStyle = lit ? "#A29BFE" : "#E0E0E0";
-        ctx.lineWidth = lit ? 2 : 0.7;
+        ctx.strokeStyle = lit ? "rgba(250,250,250,0.4)" : "rgba(255,255,255,0.08)";
+        ctx.lineWidth = lit ? 1.5 : 0.6;
         ctx.stroke();
       }
 
@@ -181,25 +181,24 @@ export function KnowledgeGraph({ nodes, links, width, height, onNodeClick }: Pro
 
         ctx.beginPath();
         ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = isH || isN ? color : color + "CC";
+        ctx.fillStyle = isH || isN ? color : color + "99";
         ctx.fill();
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = "rgba(26,26,26,0.6)";
+        ctx.lineWidth = 1.5;
         ctx.stroke();
 
         // Labels: only for hovered node and its direct neighbors
         if (isH || isN) {
-          ctx.font = isH ? "bold 12px Inter, sans-serif" : LABEL_FONT;
+          ctx.font = isH ? "bold 11px Geist, sans-serif" : "10px Geist, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillStyle = "#252525";
-          const lbl = n.label.length > 35 ? n.label.slice(0, 34) + "…" : n.label;
+          const lbl = n.label.length > 30 ? n.label.slice(0, 29) + "…" : n.label;
 
-          // Text background for readability
+          // Dark text background
           const tw = ctx.measureText(lbl).width;
-          ctx.fillStyle = "rgba(255,255,255,0.85)";
-          ctx.fillRect(n.x - tw / 2 - 3, n.y - r - 17, tw + 6, 14);
-          ctx.fillStyle = "#252525";
-          ctx.fillText(lbl, n.x, n.y - r - 6);
+          ctx.fillStyle = "rgba(26,26,26,0.85)";
+          ctx.fillRect(n.x - tw / 2 - 4, n.y - r - 18, tw + 8, 15);
+          ctx.fillStyle = "#FAFAFA";
+          ctx.fillText(lbl, n.x, n.y - r - 7);
         }
       }
 
@@ -259,7 +258,7 @@ export function KnowledgeGraph({ nodes, links, width, height, onNodeClick }: Pro
         onMouseUp={onUp}
         onMouseLeave={onUp}
       />
-      <div className="absolute bottom-4 left-4 flex gap-4 rounded-lg bg-white/95 px-4 py-2.5 text-[11px] shadow-sm backdrop-blur-sm">
+      <div className="absolute bottom-4 left-4 flex gap-4 rounded-lg bg-[var(--color-surface)]/90 border border-[var(--color-border)] px-4 py-2.5 text-[11px] backdrop-blur-sm">
         {[
           { label: "KB Article", color: "#3B82F6" },
           { label: "Script", color: "#8B5CF6" },

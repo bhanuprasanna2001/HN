@@ -11,7 +11,6 @@ import {
   XCircle,
   Clock,
   ArrowRight,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { fetchStats, type DashboardStats } from "@/lib/api";
@@ -21,20 +20,19 @@ interface StatCardProps {
   label: string;
   value: string | number;
   icon: React.ReactNode;
-  gradient: string;
   delay: string;
 }
 
-function StatCard({ label, value, icon, gradient, delay }: StatCardProps) {
+function StatCard({ label, value, icon, delay }: StatCardProps) {
   return (
-    <div className={cn("card card-interactive p-5", delay)}>
-      <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", gradient)}>
+    <div className={cn("card p-5", delay)}>
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-surface-elevated)]">
         {icon}
       </div>
-      <p className="mt-4 text-3xl font-bold text-[var(--color-text)]">
+      <p className="mt-4 font-mono text-2xl font-bold text-[var(--color-text)]">
         {typeof value === "number" ? formatNumber(value) : value}
       </p>
-      <p className="mt-1 text-xs font-medium text-[var(--color-text-muted)]">{label}</p>
+      <p className="mt-1 text-[11px] tracking-wide text-[var(--color-text-muted)]">{label}</p>
     </div>
   );
 }
@@ -44,14 +42,12 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchStats()
-      .then(setStats)
-      .catch((e) => setError(e.message));
+    fetchStats().then(setStats).catch((e) => setError(e.message));
   }, []);
 
   if (error) {
     return (
-      <div className="card border-red-200 bg-red-50 p-6 text-sm text-red-700">
+      <div className="card border-red-900 p-6 text-sm text-[var(--color-error)]">
         Failed to load dashboard: {error}
       </div>
     );
@@ -60,150 +56,71 @@ export default function DashboardPage() {
   if (!stats) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-primary)] border-t-transparent" />
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-text)] border-t-transparent" />
       </div>
     );
   }
 
   return (
     <>
-      {/* Hero */}
-      <div className="card gradient-hero mb-8 animate-fade-in p-8">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-[var(--color-primary)]" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-primary)]">
-                Self-Learning Intelligence
-              </p>
-            </div>
-            <h1 className="mt-2 text-2xl font-bold text-[var(--color-text)]">
-              SupportMind AI Dashboard
-            </h1>
-            <p className="mt-2 max-w-lg text-sm leading-relaxed text-[var(--color-text-muted)]">
-              Continuously learning from every resolved ticket. Knowledge gaps are detected,
-              articles are auto-generated, and human reviewers govern what gets published.
-            </p>
-          </div>
-          <div className="hidden flex-col items-end gap-2 lg:flex">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-primary)] shadow-lg shadow-purple-200">
-              <Sparkles size={20} className="text-white" />
-            </div>
-          </div>
-        </div>
+      {/* Header */}
+      <div className="mb-10 animate-fade-in">
+        <p className="font-mono text-[11px] tracking-widest text-[var(--color-text-muted)]">SUPPORTMIND AI</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-[var(--color-text)]">
+          Dashboard
+        </h1>
+        <p className="mt-2 max-w-lg text-sm leading-relaxed text-[var(--color-text-muted)]">
+          Self-learning intelligence layer — continuously learning from every resolved ticket, governed by human reviewers.
+        </p>
       </div>
 
       {/* Primary stats */}
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard
-          label="Knowledge Articles"
-          value={stats.total_kb_articles}
-          icon={<BookOpen size={18} strokeWidth={1.6} className="text-blue-600" />}
-          gradient="gradient-blue"
-          delay="animate-fade-in"
-        />
-        <StatCard
-          label="Tier 3 Scripts"
-          value={stats.total_scripts}
-          icon={<Terminal size={18} strokeWidth={1.6} className="text-purple-600" />}
-          gradient="gradient-purple"
-          delay="animate-fade-in-delay-1"
-        />
-        <StatCard
-          label="Tickets"
-          value={stats.total_tickets}
-          icon={<FileText size={18} strokeWidth={1.6} className="text-emerald-600" />}
-          gradient="gradient-green"
-          delay="animate-fade-in-delay-2"
-        />
-        <StatCard
-          label="Conversations"
-          value={stats.total_conversations}
-          icon={<MessageSquare size={18} strokeWidth={1.6} className="text-amber-600" />}
-          gradient="gradient-amber"
-          delay="animate-fade-in-delay-3"
-        />
+      <div className="grid grid-cols-4 gap-3">
+        <StatCard label="KB Articles" value={stats.total_kb_articles} icon={<BookOpen size={15} className="text-[#60A5FA]" />} delay="animate-fade-in" />
+        <StatCard label="Tier 3 Scripts" value={stats.total_scripts} icon={<Terminal size={15} className="text-[#A78BFA]" />} delay="animate-fade-in-delay-1" />
+        <StatCard label="Tickets" value={stats.total_tickets} icon={<FileText size={15} className="text-[#34D399]" />} delay="animate-fade-in-delay-2" />
+        <StatCard label="Conversations" value={stats.total_conversations} icon={<MessageSquare size={15} className="text-[#FBBF24]" />} delay="animate-fade-in-delay-3" />
       </div>
 
       {/* Learning metrics */}
-      <h2 className="mb-3 mt-8 text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)] animate-fade-in">
-        Learning Loop Metrics
-      </h2>
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard
-          label="Gaps Detected"
-          value={stats.total_gaps_detected}
-          icon={<Lightbulb size={18} strokeWidth={1.6} className="text-orange-600" />}
-          gradient="bg-orange-50"
-          delay="animate-fade-in"
-        />
-        <StatCard
-          label="Approved"
-          value={stats.gaps_approved}
-          icon={<CheckCircle2 size={18} strokeWidth={1.6} className="text-emerald-600" />}
-          gradient="gradient-green"
-          delay="animate-fade-in-delay-1"
-        />
-        <StatCard
-          label="Rejected"
-          value={stats.gaps_rejected}
-          icon={<XCircle size={18} strokeWidth={1.6} className="text-red-500" />}
-          gradient="bg-red-50"
-          delay="animate-fade-in-delay-2"
-        />
-        <StatCard
-          label="Pending Review"
-          value={stats.gaps_pending}
-          icon={<Clock size={18} strokeWidth={1.6} className="text-amber-600" />}
-          gradient="gradient-amber"
-          delay="animate-fade-in-delay-3"
-        />
+      <p className="mb-3 mt-8 font-mono text-[10px] tracking-widest text-[var(--color-text-dim)] animate-fade-in">LEARNING LOOP</p>
+      <div className="grid grid-cols-4 gap-3">
+        <StatCard label="Gaps Detected" value={stats.total_gaps_detected} icon={<Lightbulb size={15} className="text-[#FBBF24]" />} delay="animate-fade-in" />
+        <StatCard label="Approved" value={stats.gaps_approved} icon={<CheckCircle2 size={15} className="text-[#34D399]" />} delay="animate-fade-in-delay-1" />
+        <StatCard label="Rejected" value={stats.gaps_rejected} icon={<XCircle size={15} className="text-[#F87171]" />} delay="animate-fade-in-delay-2" />
+        <StatCard label="Pending" value={stats.gaps_pending} icon={<Clock size={15} className="text-[var(--color-text-muted)]" />} delay="animate-fade-in-delay-3" />
       </div>
 
-      {/* Self-learning loop visualization */}
+      {/* Pipeline */}
       <div className="card mt-8 animate-fade-in overflow-hidden">
-        <div className="border-b border-[var(--color-border)] bg-neutral-50/50 px-6 py-4">
-          <h2 className="text-sm font-bold text-[var(--color-text)]">How the Self-Learning Loop Works</h2>
+        <div className="border-b border-[var(--color-border)] px-6 py-4">
+          <p className="font-mono text-[10px] tracking-widest text-[var(--color-text-dim)]">HOW IT WORKS</p>
+          <h2 className="mt-1 text-sm font-semibold text-[var(--color-text)]">Self-Learning Loop</h2>
         </div>
-        <div className="p-6">
-          <div className="flex items-center justify-between">
-            {[
-              { num: 1, label: "Gap Detected", desc: "Resolved Tier 3 ticket with no KB match", color: "bg-orange-500" },
-              { num: 2, label: "KB Draft Generated", desc: "LLM creates article from resolution + transcript", color: "bg-blue-500" },
-              { num: 3, label: "Human Review", desc: "Reviewer approves or rejects with notes", color: "bg-purple-500" },
-              { num: 4, label: "Published & Indexed", desc: "Article embedded into vector DB for retrieval", color: "bg-emerald-500" },
-            ].map(({ num, label, desc, color }, i) => (
-              <div key={label} className="flex items-center gap-4">
-                <div className="flex flex-col items-center text-center">
-                  <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-white shadow-md", color)}>
-                    {num}
-                  </div>
-                  <p className="mt-2 text-xs font-semibold text-[var(--color-text)]">{label}</p>
-                  <p className="mt-0.5 max-w-36 text-[10px] leading-tight text-[var(--color-text-muted)]">{desc}</p>
-                </div>
-                {i < 3 && (
-                  <ArrowRight size={16} className="mb-6 text-[var(--color-border)]" />
-                )}
+        <div className="flex items-center justify-between px-6 py-8">
+          {[
+            { n: "01", label: "Gap Detected", sub: "No KB match for resolved ticket" },
+            { n: "02", label: "KB Draft Generated", sub: "LLM extracts knowledge from resolution" },
+            { n: "03", label: "Human Review", sub: "Reviewer approves or rejects" },
+            { n: "04", label: "Published", sub: "Article indexed for future retrieval" },
+          ].map(({ n, label, sub }, i) => (
+            <div key={n} className="flex items-center gap-6">
+              <div className="text-center">
+                <p className="font-mono text-[10px] text-[var(--color-text-dim)]">{n}</p>
+                <p className="mt-1 text-xs font-semibold text-[var(--color-text)]">{label}</p>
+                <p className="mt-0.5 max-w-32 text-[10px] leading-tight text-[var(--color-text-muted)]">{sub}</p>
               </div>
-            ))}
-          </div>
-
-          <div className="mt-6 flex gap-3">
-            <Link
-              href="/learning"
-              className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-purple-200/50 transition-all hover:shadow-lg"
-            >
-              <Lightbulb size={14} />
-              Review Learning Events
-            </Link>
-            <Link
-              href="/copilot"
-              className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-4 py-2.5 text-xs font-semibold text-[var(--color-text)] transition-all hover:bg-neutral-50"
-            >
-              <MessageSquare size={14} />
-              Try the Copilot
-            </Link>
-          </div>
+              {i < 3 && <ArrowRight size={14} className="text-[var(--color-text-dim)]" />}
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-3 border-t border-[var(--color-border)] px-6 py-4">
+          <Link href="/learning" className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-text)] px-4 py-2 text-[11px] font-semibold text-[var(--color-bg)] transition-opacity hover:opacity-90">
+            <Lightbulb size={13} /> Review Events
+          </Link>
+          <Link href="/copilot" className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-4 py-2 text-[11px] font-semibold text-[var(--color-text)] transition-colors hover:border-[var(--color-text-dim)]">
+            <MessageSquare size={13} /> Try Copilot
+          </Link>
         </div>
       </div>
     </>

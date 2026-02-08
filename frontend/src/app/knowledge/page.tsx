@@ -51,9 +51,10 @@ export default function KnowledgePage() {
   return (
     <>
       <div className="mb-8 animate-fade-in">
-        <h1 className="text-2xl font-bold text-[var(--color-text)]">Knowledge Base</h1>
+        <p className="font-mono text-[10px] tracking-widest text-[var(--color-text-dim)]">KNOWLEDGE BASE</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-[var(--color-text)]">Explore Knowledge</h1>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-          Explore provenance relationships and browse {totalArticles.toLocaleString()} articles
+          Provenance graph and {totalArticles.toLocaleString()} articles
         </p>
       </div>
 
@@ -85,8 +86,8 @@ export default function KnowledgePage() {
         <div className="card mb-6 animate-fade-in p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <span className="inline-block h-3.5 w-3.5 rounded-full shadow-sm" style={{ backgroundColor: nodeColor(selectedNode.group) }} />
-              <span className="badge bg-neutral-100 capitalize text-[var(--color-text-muted)]">
+              <span className="inline-block h-3.5 w-3.5 rounded-full" style={{ backgroundColor: nodeColor(selectedNode.group) }} />
+              <span className="badge bg-[var(--color-surface-elevated)] capitalize text-[var(--color-text-muted)]">
                 {selectedNode.group.replace("_", " ")}
               </span>
               <span className="font-mono text-[11px] text-[var(--color-text-muted)]">{selectedNode.id}</span>
@@ -102,7 +103,7 @@ export default function KnowledgePage() {
           {selectedNode.metadata && Object.keys(selectedNode.metadata).length > 0 && (
             <div className="mt-2 flex gap-2">
               {Object.entries(selectedNode.metadata).filter(([, v]) => v).map(([k, v]) => (
-                <span key={k} className="badge bg-purple-50 text-[var(--color-primary)]">
+                <span key={k} className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">
                   {k}: {v}
                 </span>
               ))}
@@ -117,7 +118,7 @@ export default function KnowledgePage() {
           <h2 className="text-sm font-bold text-[var(--color-text)]">
             Articles
           </h2>
-          <span className="badge bg-neutral-100 text-[var(--color-text-muted)]">
+          <span className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">
             {totalArticles.toLocaleString()}
           </span>
           <div className="relative ml-auto w-72">
@@ -126,7 +127,7 @@ export default function KnowledgePage() {
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Search articles…"
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-2.5 pl-9 pr-3 text-xs text-[var(--color-text)] shadow-sm placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-purple-100"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] py-2.5 pl-9 pr-3 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:border-[var(--color-text-dim)] focus:outline-none"
             />
           </div>
         </div>
@@ -145,8 +146,8 @@ export default function KnowledgePage() {
                     onClick={() => setExpandedArticle(isExpanded ? null : art.KB_Article_ID)}
                     className="flex w-full items-start gap-3 p-4 text-left"
                   >
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg gradient-blue">
-                      <BookOpen size={14} strokeWidth={1.8} className="text-blue-600" />
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface-elevated)]">
+                      <BookOpen size={14} strokeWidth={1.8} className="text-[#60A5FA]" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-[var(--color-text)]">
@@ -161,12 +162,12 @@ export default function KnowledgePage() {
                         <span className="font-mono text-[10px] text-[var(--color-text-muted)]">
                           {art.KB_Article_ID}
                         </span>
-                        {art.Module && (
-                          <span className="badge bg-neutral-100 text-[var(--color-text-muted)]">{art.Module}</span>
-                        )}
-                        {art.Source_Type && (
-                          <span className="badge bg-blue-50 text-blue-600">{art.Source_Type}</span>
-                        )}
+                    {art.Module && (
+                      <span className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">{art.Module}</span>
+                    )}
+                    {art.Source_Type && (
+                      <span className="badge bg-[var(--color-surface-elevated)] text-[#60A5FA]">{art.Source_Type}</span>
+                    )}
                       </div>
                     </div>
                     <ChevronDown
@@ -180,7 +181,7 @@ export default function KnowledgePage() {
 
                   {/* Expanded body */}
                   {isExpanded && (
-                    <div className="border-t border-[var(--color-border)] bg-neutral-50/50 px-4 pb-4 pt-3">
+                    <div className="border-t border-[var(--color-border)] bg-[var(--color-bg)] px-4 pb-4 pt-3">
                       <div className="max-h-80 overflow-y-auto text-xs leading-relaxed text-[var(--color-text)]">
                         {(art.Body || "No content available.").split("\n").map((line: string, i: number) => (
                           <p key={i} className={cn("mt-1", line.startsWith("#") && "mt-3 font-semibold")}>
@@ -192,7 +193,7 @@ export default function KnowledgePage() {
                         <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--color-border)] pt-3">
                           <Tag size={12} className="text-[var(--color-text-muted)]" />
                           {String(art.Tags).split(",").map((tag: string) => (
-                            <span key={tag.trim()} className="badge bg-purple-50 text-[var(--color-primary)]">
+                            <span key={tag.trim()} className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">
                               {tag.trim()}
                             </span>
                           ))}

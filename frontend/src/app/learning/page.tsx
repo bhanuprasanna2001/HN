@@ -85,40 +85,39 @@ export default function LearningPage() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[var(--color-text)]">Self-Learning Loop</h1>
+      <div className="mb-8 animate-fade-in">
+        <p className="font-mono text-[10px] tracking-widest text-[var(--color-text-dim)]">SELF-LEARNING LOOP</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-[var(--color-text)]">Learning Events</h1>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">
           Review detected knowledge gaps and approve or reject auto-generated KB drafts
         </p>
       </div>
 
-      {/* Pipeline visualization */}
-      <div className="mb-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-        <div className="flex items-center justify-between">
+      {/* Pipeline */}
+      <div className="card mb-6 overflow-hidden animate-fade-in-delay-1">
+        <div className="flex items-center justify-between px-6 py-6">
           {[
-            { icon: Lightbulb, label: "Gap Detected", desc: "Tier 3 ticket resolved, no KB match" },
-            { icon: FileText, label: "Draft Generated", desc: "LLM creates KB article from resolution" },
-            { icon: GitBranch, label: "Human Review", desc: "Reviewer approves or rejects with notes" },
-            { icon: CheckCircle2, label: "Published", desc: "Article indexed for future retrieval" },
+            { icon: Lightbulb, label: "Gap Detected", desc: "No KB match" },
+            { icon: FileText, label: "Draft Generated", desc: "LLM extracts" },
+            { icon: GitBranch, label: "Human Review", desc: "Approve / reject" },
+            { icon: CheckCircle2, label: "Published", desc: "Indexed for RAG" },
           ].map(({ icon: Icon, label, desc }, i) => (
-            <div key={label} className="flex items-center gap-3">
-              <div className="flex flex-col items-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)]">
-                  <Icon size={16} className="text-white" />
+            <div key={label} className="flex items-center gap-5">
+              <div className="text-center">
+                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-surface-elevated)]">
+                  <Icon size={15} className="text-[var(--color-text)]" />
                 </div>
-                <p className="mt-2 text-xs font-medium text-[var(--color-text)]">{label}</p>
-                <p className="mt-0.5 max-w-32 text-center text-[10px] text-[var(--color-text-muted)]">{desc}</p>
+                <p className="mt-2 text-[11px] font-medium text-[var(--color-text)]">{label}</p>
+                <p className="text-[9px] text-[var(--color-text-dim)]">{desc}</p>
               </div>
-              {i < 3 && (
-                <div className="mb-8 h-px w-12 bg-[var(--color-border)]" />
-              )}
+              {i < 3 && <div className="mb-6 h-px w-8 bg-[var(--color-border)]" />}
             </div>
           ))}
         </div>
       </div>
 
       {/* Scan for Gaps trigger */}
-      <div className="card mb-6 flex items-center gap-4 border-purple-200 bg-purple-50/50 p-4">
+      <div className="card mb-6 flex items-center gap-4 p-4 animate-fade-in-delay-2">
         <div className="flex-1">
           <p className="text-sm font-semibold text-[var(--color-text)]">Trigger the Self-Learning Loop</p>
           <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
@@ -144,7 +143,7 @@ export default function LearningPage() {
             finally { setScanLoading(false); }
           }}
           disabled={scanLoading}
-          className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--color-primary)] px-5 py-2.5 text-xs font-semibold text-white shadow-md shadow-purple-200/50 transition-all hover:shadow-lg disabled:opacity-50"
+          className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--color-text)] px-5 py-2.5 text-xs font-semibold text-[var(--color-bg)] transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {scanLoading ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />}
           Scan for Gaps
@@ -182,10 +181,10 @@ export default function LearningPage() {
           {events.map((event) => {
             const isExpanded = expandedId === event.event_id;
             return (
-              <div
-                key={event.event_id}
-                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]"
-              >
+                <div
+                  key={event.event_id}
+                  className="card"
+                >
                 {/* Event header */}
                 <button
                   onClick={() => {
@@ -248,7 +247,7 @@ export default function LearningPage() {
                         <button
                           onClick={() => handleGenerateDraft(event.ticket_number)}
                           disabled={draftLoading}
-                          className="flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                          className="flex items-center gap-2 rounded-lg bg-[var(--color-text)] px-3 py-2 text-xs font-medium text-[var(--color-bg)] transition-opacity hover:opacity-90 disabled:opacity-50"
                         >
                           {draftLoading ? (
                             <Loader2 size={14} className="animate-spin" />
@@ -262,24 +261,24 @@ export default function LearningPage() {
 
                     {/* Draft preview */}
                     {draft && expandedId === event.event_id && (
-                      <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
-                        <p className="text-xs font-semibold text-blue-800">Generated KB Draft</p>
+                      <div className="mt-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
+                        <p className="font-mono text-[10px] tracking-widest text-[var(--color-text-dim)]">GENERATED KB DRAFT</p>
                         <p className="mt-2 text-base font-semibold text-[var(--color-text)]">{draft.title}</p>
-                        <div className="mt-3 max-h-64 overflow-y-auto rounded-md bg-white p-4">
+                        <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
                           <Markdown content={draft.body} />
                         </div>
 
                         {/* Lineage */}
                         {draft.lineage.length > 0 && (
-                          <div className="mt-3 border-t border-blue-200 pt-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">
-                              Provenance Trail
+                          <div className="mt-3 border-t border-[var(--color-border)] pt-3">
+                            <p className="font-mono text-[9px] tracking-widest text-[var(--color-text-dim)]">
+                              PROVENANCE TRAIL
                             </p>
                             {draft.lineage.map((l, i) => (
-                              <div key={i} className="mt-1 flex items-center gap-2 text-[11px] text-blue-700">
-                                <GitBranch size={12} />
-                                <span className="font-mono">{l.source_id}</span>
-                                <span className="text-blue-400">({l.source_type} → {l.relationship})</span>
+                              <div key={i} className="mt-1.5 flex items-center gap-2 text-[11px] text-[var(--color-text-muted)]">
+                                <GitBranch size={12} className="text-[var(--color-text-dim)]" />
+                                <span className="font-mono text-[var(--color-text)]">{l.source_id}</span>
+                                <span className="text-[var(--color-text-dim)]">({l.source_type} → {l.relationship})</span>
                               </div>
                             ))}
                           </div>
@@ -304,7 +303,7 @@ export default function LearningPage() {
                           <button
                             onClick={() => handleReview(event.event_id, "approve")}
                             disabled={reviewLoading === event.event_id}
-                            className="flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                            className="flex items-center gap-1.5 rounded-lg bg-[var(--color-success)] px-4 py-2 text-xs font-medium text-[var(--color-bg)] transition-opacity hover:opacity-90 disabled:opacity-50"
                           >
                             {reviewLoading === event.event_id ? (
                               <Loader2 size={14} className="animate-spin" />
@@ -316,7 +315,7 @@ export default function LearningPage() {
                           <button
                             onClick={() => handleReview(event.event_id, "reject")}
                             disabled={reviewLoading === event.event_id}
-                            className="flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
+                            className="flex items-center gap-1.5 rounded-lg border border-[var(--color-error)]/30 bg-[var(--color-error)]/10 px-4 py-2 text-xs font-medium text-[var(--color-error)] transition-opacity hover:opacity-80 disabled:opacity-50"
                           >
                             <XCircle size={14} />
                             Reject

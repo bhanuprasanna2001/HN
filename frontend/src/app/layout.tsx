@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { Sidebar } from "@/components/Sidebar";
 import "./globals.css";
 
@@ -13,17 +15,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-        />
-      </head>
-      <body className="bg-dots">
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body>
         <Sidebar />
-        <main className="ml-60 min-h-screen">
-          <div className="mx-auto max-w-[1120px] px-8 py-8">{children}</div>
+        <main className="ml-14 min-h-screen bg-[var(--color-bg)]">
+          <div className="mx-auto max-w-[1100px] px-10 py-10">{children}</div>
         </main>
       </body>
     </html>
