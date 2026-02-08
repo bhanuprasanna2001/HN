@@ -190,8 +190,11 @@ async def list_kb_articles(
         articles = [
             a for a in articles
             if search_lower in str(a.get("Title", "")).lower()
-            or search_lower in str(a.get("Body", "")).lower()
+            or search_lower in str(a.get("KB_Article_ID", "")).lower()
+            or search_lower in str(a.get("Module", "")).lower()
+            or search_lower in str(a.get("Category", "")).lower()
             or search_lower in str(a.get("Tags", "")).lower()
+            or search_lower in str(a.get("Body", ""))[:500].lower()
         ]
 
     total = len(articles)
@@ -205,7 +208,7 @@ async def list_kb_articles(
 
 
 @app.get("/api/knowledge/graph", response_model=KnowledgeGraphData)
-async def get_knowledge_graph(limit: int = Query(80, ge=10, le=300)):
+async def get_knowledge_graph(limit: int = Query(300, ge=10, le=500)):
     """Return the knowledge graph data for visualization."""
     lineage = state["data"].get("KB_Lineage", [])
     nodes_map: dict[str, GraphNode] = {}

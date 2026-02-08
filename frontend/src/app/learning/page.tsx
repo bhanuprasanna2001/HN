@@ -78,9 +78,9 @@ export default function LearningPage() {
   }
 
   const statusIcon = (status: string) => {
-    if (status === "Approved") return <CheckCircle2 size={14} className="text-emerald-600" />;
-    if (status === "Rejected") return <XCircle size={14} className="text-red-600" />;
-    return <Clock size={14} className="text-amber-600" />;
+    if (status === "Approved") return <CheckCircle2 size={14} className="text-[var(--color-success)]" />;
+    if (status === "Rejected") return <XCircle size={14} className="text-[var(--color-error)]" />;
+    return <Clock size={14} className="text-[var(--color-warning)]" />;
   };
 
   return (
@@ -124,7 +124,7 @@ export default function LearningPage() {
             Scan all resolved Tier 3 tickets for knowledge gaps. New gaps will appear as Pending events for human review.
           </p>
           {scanResult && (
-            <p className="mt-2 text-xs font-medium text-emerald-700">{scanResult}</p>
+            <p className="mt-2 text-xs font-medium text-[var(--color-success)]">{scanResult}</p>
           )}
         </div>
         <button
@@ -159,8 +159,8 @@ export default function LearningPage() {
             className={cn(
               "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
               filter === s
-                ? "bg-[var(--color-accent)] text-white"
-                : "border border-[var(--color-border)] text-[var(--color-text-muted)] hover:bg-neutral-50",
+                ? "bg-[var(--color-text)] text-[var(--color-bg)]"
+                : "border border-[var(--color-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)]",
             )}
           >
             {s || "All"} {s === "Pending" && total > 0 ? `(${events.filter(e => e.status === "Pending").length})` : ""}
@@ -348,7 +348,7 @@ export default function LearningPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-neutral-50 disabled:opacity-40"
+            className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] disabled:opacity-40"
           >
             Previous
           </button>
@@ -358,7 +358,7 @@ export default function LearningPage() {
           <button
             onClick={() => setPage((p) => p + 1)}
             disabled={events.length < 20}
-            className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-neutral-50 disabled:opacity-40"
+            className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] disabled:opacity-40"
           >
             Next
           </button>

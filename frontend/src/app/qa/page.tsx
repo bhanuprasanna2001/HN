@@ -9,10 +9,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  FileText,
   ChevronLeft,
   ChevronRight,
-  Info,
 } from "lucide-react";
 import { fetchTickets, scoreQA, type Paginated } from "@/lib/api";
 import { cn, truncate } from "@/lib/utils";
@@ -44,10 +42,10 @@ interface QAResult {
 
 function SeverityBadge({ severity }: { severity: string }) {
   const styles: Record<string, string> = {
-    CRITICAL: "bg-red-950 text-red-400 border-red-800",
-    HIGH: "bg-orange-950 text-orange-400 border-orange-800",
-    MEDIUM: "bg-amber-950 text-amber-400 border-amber-800",
-    LOW: "bg-blue-950 text-blue-400 border-blue-800",
+    CRITICAL: "bg-red-50 text-red-700 border-red-200",
+    HIGH: "bg-orange-50 text-orange-700 border-orange-200",
+    MEDIUM: "bg-amber-50 text-amber-700 border-amber-200",
+    LOW: "bg-blue-50 text-blue-700 border-blue-200",
   };
   return <span className={cn("badge border", styles[severity] ?? styles.LOW)}>{severity}</span>;
 }
@@ -60,7 +58,7 @@ function ScoreRing({ score }: { score: string }) {
   return (
     <div className="relative flex h-16 w-16 items-center justify-center">
       <svg className="absolute" width={56} height={56} viewBox="0 0 56 56">
-        <circle cx={28} cy={28} r={24} fill="none" stroke="#333333" strokeWidth={3} />
+        <circle cx={28} cy={28} r={24} fill="none" stroke="#E5E5E5" strokeWidth={3} />
         <circle cx={28} cy={28} r={24} fill="none" stroke={color} strokeWidth={3}
           strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={off}
           transform="rotate(-90 28 28)" style={{ transition: "stroke-dashoffset 1s ease-out" }} />
@@ -112,11 +110,11 @@ function CriteriaRow({ label, val }: { label: string; val: unknown }) {
   return (
     <div className="flex items-start gap-2.5 px-4 py-2.5">
       {s === "Yes" ? (
-        <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-500" />
+        <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-[var(--color-success)]" />
       ) : s === "No" ? (
-        <XCircle size={15} className="mt-0.5 shrink-0 text-red-500" />
+        <XCircle size={15} className="mt-0.5 shrink-0 text-[var(--color-error)]" />
       ) : (
-        <div className="mt-0.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-neutral-200 text-[8px] text-neutral-500">–</div>
+        <div className="mt-0.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)] text-[8px] text-[var(--color-text-dim)]">–</div>
       )}
       <div className="min-w-0 flex-1">
         <span className="text-[12px] font-medium text-[var(--color-text)]">{label.replace(/_/g, " ")}</span>
@@ -163,53 +161,74 @@ export default function QAPage() {
         </p>
       </div>
 
-      {/* Ticket selector — horizontal strip at top */}
+      {/* Ticket selector */}
       <div className="card mb-6 animate-fade-in-delay-1 overflow-hidden">
         <div className="flex items-center gap-3 border-b border-[var(--color-border)] px-5 py-3">
-          <h2 className="text-sm font-bold text-[var(--color-text)]">Select a Ticket to Score</h2>
-          <span className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">{total} closed</span>
+          <h2 className="text-sm font-bold text-[var(--color-text)]">Select a Ticket</h2>
+          <span className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">{total}</span>
           <div className="relative ml-auto w-64">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Search tickets…"
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] py-2 pl-9 pr-3 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:border-[var(--color-text-dim)] focus:outline-none"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pl-9 pr-3 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:border-[var(--color-text-dim)] focus:outline-none"
             />
           </div>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto p-3">
-          {tickets.map((tk) => (
-            <button
-              key={tk.Ticket_Number}
-              onClick={() => handleScore(tk.Ticket_Number)}
-              className={cn(
-                "flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all",
-                selectedTicket === tk.Ticket_Number
-                  ? "border-[var(--color-text-dim)] bg-[var(--color-surface-elevated)]"
-                  : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-text-dim)]",
-              )}
-            >
-              <FileText size={13} className={cn("shrink-0", selectedTicket === tk.Ticket_Number ? "text-[var(--color-text)]" : "text-[var(--color-text-dim)]")} />
-              <div>
-                <p className="max-w-48 text-[11px] font-medium text-[var(--color-text)]">{truncate(tk.Subject || tk.Ticket_Number, 35)}</p>
-                <p className="font-mono text-[9px] text-[var(--color-text-muted)]">{tk.Ticket_Number}</p>
-              </div>
-            </button>
-          ))}
+        <div className="max-h-64 overflow-y-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-[var(--color-border)] text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-dim)]">
+                <th className="px-5 py-2 text-left">Ticket</th>
+                <th className="px-5 py-2 text-left">Subject</th>
+                <th className="px-5 py-2 text-left">Category</th>
+                <th className="px-5 py-2 text-left">Priority</th>
+                <th className="px-5 py-2 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border-subtle)]">
+              {tickets.map((tk) => (
+                <tr
+                  key={tk.Ticket_Number}
+                  className={cn(
+                    "cursor-pointer transition-colors",
+                    selectedTicket === tk.Ticket_Number ? "bg-[var(--color-surface-elevated)]" : "hover:bg-[var(--color-surface-elevated)]/50",
+                  )}
+                  onClick={() => handleScore(tk.Ticket_Number)}
+                >
+                  <td className="px-5 py-2.5 font-mono text-[11px] text-[var(--color-text-muted)]">{tk.Ticket_Number}</td>
+                  <td className="px-5 py-2.5 text-[12px] font-medium text-[var(--color-text)]">{truncate(tk.Subject || "—", 50)}</td>
+                  <td className="px-5 py-2.5 text-[11px] text-[var(--color-text-muted)]">{tk.Category || "—"}</td>
+                  <td className="px-5 py-2.5">
+                    <span className={cn("badge",
+                      tk.Priority === "High" ? "bg-red-50 text-[var(--color-error)]" :
+                      tk.Priority === "Medium" ? "bg-amber-50 text-[var(--color-warning)]" :
+                      "bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]"
+                    )}>
+                      {tk.Priority || "—"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-2.5 text-right">
+                    <button className="font-mono text-[10px] text-[var(--color-text-dim)] hover:text-[var(--color-text)]">Score →</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-3 border-t border-[var(--color-border)] py-2">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1 text-[var(--color-text-muted)] disabled:opacity-30"><ChevronLeft size={14} /></button>
-            <span className="text-[11px] text-[var(--color-text-muted)]">Page {page}/{totalPages}</span>
+            <span className="font-mono text-[11px] text-[var(--color-text-dim)]">{page}/{totalPages}</span>
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="p-1 text-[var(--color-text-muted)] disabled:opacity-30"><ChevronRight size={14} /></button>
           </div>
         )}
       </div>
 
-      {/* Results — full width below */}
+      {/* Results */}
       <div className="animate-fade-in-delay-2">
         {scoring ? (
           <div className="card flex h-64 flex-col items-center justify-center gap-3">
@@ -223,7 +242,7 @@ export default function QAPage() {
             <div className="card gradient-hero p-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-primary)]">QA Score</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-dim)]">QA Score</p>
                   <h3 className="mt-1 text-xl font-bold text-[var(--color-text)]">{qaResult.ticket_number}</h3>
                   <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Mode: {qaResult.Evaluation_Mode || "N/A"}</p>
                 </div>
@@ -234,9 +253,9 @@ export default function QAPage() {
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 {qaResult.QA_Recommendation && (
                   <span className={cn("badge font-semibold",
-                    qaResult.QA_Recommendation === "Keep doing" ? "bg-emerald-950 text-[var(--color-success)]" :
-                    qaResult.QA_Recommendation === "Coaching needed" ? "bg-amber-950 text-[var(--color-warning)]" :
-                    "bg-red-950 text-[var(--color-error)]",
+                    qaResult.QA_Recommendation === "Keep doing" ? "bg-green-50 text-[var(--color-success)]" :
+                    qaResult.QA_Recommendation === "Coaching needed" ? "bg-amber-50 text-[var(--color-warning)]" :
+                    "bg-red-50 text-[var(--color-error)]",
                   )}>{qaResult.QA_Recommendation}</span>
                 )}
               </div>
@@ -259,22 +278,22 @@ export default function QAPage() {
             <div className="grid grid-cols-2 gap-4">
               {qaResult.Red_Flags && (
                 <div className="card overflow-hidden">
-                  <div className="flex items-center gap-2 bg-red-950/50 px-5 py-3">
+                  <div className="flex items-center gap-2 bg-red-50 px-5 py-3">
                     <ShieldAlert size={16} className="text-[var(--color-error)]" />
                     <div>
                       <h4 className="text-xs font-bold text-[var(--color-error)]">Red Flags</h4>
-                      <p className="text-[10px] text-red-400">If any flag is &quot;Yes&quot;, overall score becomes 0%</p>
+                      <p className="text-[10px] text-red-600">If any flag is &quot;Yes&quot;, overall score becomes 0%</p>
                     </div>
                   </div>
                   <div className="divide-y divide-[var(--color-border)]">
                     {Object.entries(qaResult.Red_Flags).map(([key, val]) => (
                       <div key={key} className="flex items-center gap-3 px-5 py-2.5 text-[12px]">
                         {val.score === "Yes" ? (
-                          <XCircle size={15} className="shrink-0 text-red-600" />
+                          <XCircle size={15} className="shrink-0 text-[var(--color-error)]" />
                         ) : val.score === "No" ? (
-                          <CheckCircle2 size={15} className="shrink-0 text-emerald-500" />
+                          <CheckCircle2 size={15} className="shrink-0 text-[var(--color-success)]" />
                         ) : (
-                          <div className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-neutral-200 text-[8px]">–</div>
+                          <div className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)] text-[8px] text-[var(--color-text-dim)]">–</div>
                         )}
                         <span className={cn("font-medium", val.score === "Yes" ? "text-[var(--color-error)]" : "text-[var(--color-text)]")}>
                           {key.replace(/_/g, " ")}
@@ -287,7 +306,7 @@ export default function QAPage() {
 
               {qaResult.owasp_checks && (
                 <div className="card overflow-hidden">
-                  <div className={cn("flex items-center gap-2 px-5 py-3", qaResult.owasp_checks.compliant ? "bg-emerald-950/50" : "bg-red-950/50")}>
+                  <div className={cn("flex items-center gap-2 px-5 py-3", qaResult.owasp_checks.compliant ? "bg-green-50" : "bg-red-50")}>
                     {qaResult.owasp_checks.compliant ? <ShieldCheck size={16} className="text-[var(--color-success)]" /> : <ShieldAlert size={16} className="text-[var(--color-error)]" />}
                     <div>
                       <h4 className={cn("text-xs font-bold", qaResult.owasp_checks.compliant ? "text-[var(--color-success)]" : "text-[var(--color-error)]")}>
@@ -304,23 +323,23 @@ export default function QAPage() {
                     <div className="space-y-1.5">
                       {qaResult.owasp_checks.checks_run.map((check) => (
                         <span key={check} className="flex items-center gap-1.5 text-[11px]">
-                          <CheckCircle2 size={12} className="shrink-0 text-emerald-500" />
+                          <CheckCircle2 size={12} className="shrink-0 text-[var(--color-success)]" />
                           <span className="text-[var(--color-text)]">{check}</span>
                         </span>
                       ))}
                     </div>
                   </div>
                   {qaResult.owasp_checks.findings.length > 0 && (
-                    <div className="border-t border-[var(--color-border)] px-5 py-3 space-y-2">
+                    <div className="space-y-2 border-t border-[var(--color-border)] px-5 py-3">
                       {qaResult.owasp_checks.findings.map((f, i) => (
-                        <div key={i} className="rounded-lg border border-red-900 bg-red-950/30 p-2.5">
+                        <div key={i} className="rounded-lg border border-red-200 bg-red-50 p-2.5">
                           <div className="flex items-center gap-2">
                             <AlertTriangle size={12} className="text-[var(--color-error)]" />
                             <span className="text-[11px] font-semibold text-[var(--color-error)]">{f.category}</span>
                             <SeverityBadge severity={f.severity} />
                           </div>
-                          <p className="mt-1 text-[11px] text-red-300">{f.description}</p>
-                          <p className="mt-0.5 font-mono text-[10px] text-red-500">{f.owasp_ref}</p>
+                          <p className="mt-1 text-[11px] text-red-700">{f.description}</p>
+                          <p className="mt-0.5 font-mono text-[10px] text-red-600">{f.owasp_ref}</p>
                         </div>
                       ))}
                     </div>
@@ -330,7 +349,7 @@ export default function QAPage() {
             </div>
           </div>
         ) : (
-            <div className="card flex h-48 flex-col items-center justify-center gap-3">
+          <div className="card flex h-48 flex-col items-center justify-center gap-3">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-surface-elevated)]">
               <ShieldCheck size={24} strokeWidth={1.4} className="text-[var(--color-text-dim)]" />
             </div>

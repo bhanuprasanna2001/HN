@@ -47,7 +47,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="card border-red-900 p-6 text-sm text-[var(--color-error)]">
+      <div className="card border-red-200 p-6 text-sm text-[var(--color-error)]">
         Failed to load dashboard: {error}
       </div>
     );
@@ -65,7 +65,7 @@ export default function DashboardPage() {
     <>
       {/* Header */}
       <div className="mb-10 animate-fade-in">
-        <p className="font-mono text-[11px] tracking-widest text-[var(--color-text-muted)]">SUPPORTMIND AI</p>
+        <p className="font-mono text-[11px] tracking-widest text-[var(--color-text-muted)]">SPEARE AI</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-[var(--color-text)]">
           Dashboard
         </h1>
@@ -76,18 +76,18 @@ export default function DashboardPage() {
 
       {/* Primary stats */}
       <div className="grid grid-cols-4 gap-3">
-        <StatCard label="KB Articles" value={stats.total_kb_articles} icon={<BookOpen size={15} className="text-[#60A5FA]" />} delay="animate-fade-in" />
-        <StatCard label="Tier 3 Scripts" value={stats.total_scripts} icon={<Terminal size={15} className="text-[#A78BFA]" />} delay="animate-fade-in-delay-1" />
-        <StatCard label="Tickets" value={stats.total_tickets} icon={<FileText size={15} className="text-[#34D399]" />} delay="animate-fade-in-delay-2" />
-        <StatCard label="Conversations" value={stats.total_conversations} icon={<MessageSquare size={15} className="text-[#FBBF24]" />} delay="animate-fade-in-delay-3" />
+        <StatCard label="KB Articles" value={stats.total_kb_articles} icon={<BookOpen size={15} className="text-[#3B82F6]" />} delay="animate-fade-in" />
+        <StatCard label="Tier 3 Scripts" value={stats.total_scripts} icon={<Terminal size={15} className="text-[#8B5CF6]" />} delay="animate-fade-in-delay-1" />
+        <StatCard label="Tickets" value={stats.total_tickets} icon={<FileText size={15} className="text-[#10B981]" />} delay="animate-fade-in-delay-2" />
+        <StatCard label="Conversations" value={stats.total_conversations} icon={<MessageSquare size={15} className="text-[#F59E0B]" />} delay="animate-fade-in-delay-3" />
       </div>
 
       {/* Learning metrics */}
       <p className="mb-3 mt-8 font-mono text-[10px] tracking-widest text-[var(--color-text-dim)] animate-fade-in">LEARNING LOOP</p>
       <div className="grid grid-cols-4 gap-3">
-        <StatCard label="Gaps Detected" value={stats.total_gaps_detected} icon={<Lightbulb size={15} className="text-[#FBBF24]" />} delay="animate-fade-in" />
-        <StatCard label="Approved" value={stats.gaps_approved} icon={<CheckCircle2 size={15} className="text-[#34D399]" />} delay="animate-fade-in-delay-1" />
-        <StatCard label="Rejected" value={stats.gaps_rejected} icon={<XCircle size={15} className="text-[#F87171]" />} delay="animate-fade-in-delay-2" />
+        <StatCard label="Gaps Detected" value={stats.total_gaps_detected} icon={<Lightbulb size={15} className="text-[#F59E0B]" />} delay="animate-fade-in" />
+        <StatCard label="Approved" value={stats.gaps_approved} icon={<CheckCircle2 size={15} className="text-[#10B981]" />} delay="animate-fade-in-delay-1" />
+        <StatCard label="Rejected" value={stats.gaps_rejected} icon={<XCircle size={15} className="text-[var(--color-error)]" />} delay="animate-fade-in-delay-2" />
         <StatCard label="Pending" value={stats.gaps_pending} icon={<Clock size={15} className="text-[var(--color-text-muted)]" />} delay="animate-fade-in-delay-3" />
       </div>
 

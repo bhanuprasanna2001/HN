@@ -19,7 +19,7 @@ export default function KnowledgePage() {
   const [graphWidth, setGraphWidth] = useState(800);
 
   useEffect(() => {
-    fetchKnowledgeGraph(40)
+    fetchKnowledgeGraph(500)
       .then(setGraphData)
       .catch(() => {});
   }, []);
@@ -48,6 +48,10 @@ export default function KnowledgePage() {
 
   const totalPages = Math.ceil(totalArticles / 20);
 
+  function handleNodeClick(node: GraphNode | null) {
+    setSelectedNode(node);
+  }
+
   return (
     <>
       <div className="mb-8 animate-fade-in">
@@ -72,7 +76,7 @@ export default function KnowledgePage() {
             links={graphData.links}
             width={graphWidth}
             height={460}
-            onNodeClick={setSelectedNode}
+            onNodeClick={handleNodeClick}
           />
         ) : (
           <div className="card flex h-72 items-center justify-center">
@@ -81,7 +85,7 @@ export default function KnowledgePage() {
         )}
       </div>
 
-      {/* Selected node detail */}
+      {/* Selected node detail — separate section below graph */}
       {selectedNode && (
         <div className="card mb-6 animate-fade-in p-5">
           <div className="flex items-center justify-between">
@@ -94,7 +98,7 @@ export default function KnowledgePage() {
             </div>
             <button
               onClick={() => setSelectedNode(null)}
-              className="rounded-md p-1 text-[var(--color-text-muted)] hover:bg-neutral-100 hover:text-[var(--color-text)]"
+              className="rounded-md p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text)]"
             >
               <X size={14} />
             </button>
@@ -127,7 +131,7 @@ export default function KnowledgePage() {
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Search articles…"
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] py-2.5 pl-9 pr-3 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:border-[var(--color-text-dim)] focus:outline-none"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-2.5 pl-9 pr-3 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:border-[var(--color-text-dim)] focus:outline-none"
             />
           </div>
         </div>
@@ -147,7 +151,7 @@ export default function KnowledgePage() {
                     className="flex w-full items-start gap-3 p-4 text-left"
                   >
                     <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface-elevated)]">
-                      <BookOpen size={14} strokeWidth={1.8} className="text-[#60A5FA]" />
+                      <BookOpen size={14} strokeWidth={1.8} className="text-[#3B82F6]" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-[var(--color-text)]">
@@ -162,12 +166,12 @@ export default function KnowledgePage() {
                         <span className="font-mono text-[10px] text-[var(--color-text-muted)]">
                           {art.KB_Article_ID}
                         </span>
-                    {art.Module && (
-                      <span className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">{art.Module}</span>
-                    )}
-                    {art.Source_Type && (
-                      <span className="badge bg-[var(--color-surface-elevated)] text-[#60A5FA]">{art.Source_Type}</span>
-                    )}
+                        {art.Module && (
+                          <span className="badge bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">{art.Module}</span>
+                        )}
+                        {art.Source_Type && (
+                          <span className="badge bg-[var(--color-surface-elevated)] text-[#3B82F6]">{art.Source_Type}</span>
+                        )}
                       </div>
                     </div>
                     <ChevronDown
@@ -227,8 +231,8 @@ export default function KnowledgePage() {
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium transition-colors",
                     p === page
-                      ? "bg-[var(--color-primary)] text-white shadow-md"
-                      : "text-[var(--color-text-muted)] hover:bg-neutral-100",
+                      ? "bg-[var(--color-text)] text-[var(--color-bg)] shadow-md"
+                      : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)]",
                   )}
                 >
                   {p}

@@ -1,289 +1,387 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { nodeColor } from "@/lib/utils";
+import { Maximize2, Minimize2, X } from "lucide-react";
 import type { GraphNode, GraphLink } from "@/lib/api";
+
+const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
 
 interface Props {
   nodes: GraphNode[];
   links: GraphLink[];
   width: number;
   height: number;
-  onNodeClick?: (node: GraphNode) => void;
+  onNodeClick?: (node: GraphNode | null) => void;
 }
 
-interface RuntimeNode extends GraphNode {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  pinned: boolean;
-  linkCount: number;
+interface FGNode {
+  id: string;
+  label: string;
+  group: string;
+  metadata: Record<string, string>;
+  connections: number;
+  x?: number;
+  y?: number;
 }
 
-interface RuntimeLink {
-  source: RuntimeNode;
-  target: RuntimeNode;
+interface FGLink {
+  source: string | FGNode;
+  target: string | FGNode;
   relationship: string;
 }
 
-const R = 9;
-const LABEL_FONT = "11px Inter, sans-serif";
-const REST_LEN = 100;
-const REPULSION = 3500;
-const ATTRACTION = 0.008;
-const GRAVITY = 0.015;
-const ALPHA_INIT = 1.0;
-const ALPHA_DECAY = 0.006;
-const ALPHA_MIN = 0.001;
-const V_DECAY = 0.55;
-
 export function KnowledgeGraph({ nodes, links, width, height, onNodeClick }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animRef = useRef(0);
-  const nsRef = useRef<RuntimeNode[]>([]);
-  const lsRef = useRef<RuntimeLink[]>([]);
-  const alphaRef = useRef(ALPHA_INIT);
-  const dragRef = useRef<RuntimeNode | null>(null);
-  const hovRef = useRef<RuntimeNode | null>(null);
-  const [hovered, setHovered] = useState<GraphNode | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const graphRef = useRef<any>(undefined);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [fsWidth, setFsWidth] = useState(width);
+  const [fsHeight, setFsHeight] = useState(height);
+  const hasZoomed = useRef(false);
 
-  // Build data
-  useEffect(() => {
-    const map = new Map<string, RuntimeNode>();
-    const cx = width / 2, cy = height / 2;
-
-    const rns: RuntimeNode[] = nodes.map((n, i) => {
-      const a = (2 * Math.PI * i) / Math.max(nodes.length, 1);
-      const rad = Math.min(width, height) * 0.3;
-      const rn: RuntimeNode = {
-        ...n,
-        x: cx + rad * Math.cos(a) + (Math.random() - 0.5) * 50,
-        y: cy + rad * Math.sin(a) + (Math.random() - 0.5) * 50,
-        vx: 0, vy: 0, pinned: false, linkCount: 0,
-      };
-      map.set(n.id, rn);
-      return rn;
+  /* Pre-compute connection counts so hub nodes appear larger */
+  const graphData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    links.forEach((l) => {
+      counts[l.source] = (counts[l.source] || 0) + 1;
+      counts[l.target] = (counts[l.target] || 0) + 1;
     });
+    return {
+      nodes: nodes.map((n) => ({ ...n, connections: counts[n.id] || 0 }) as FGNode),
+      links: links.map((l) => ({ source: l.source, target: l.target, relationship: l.relationship }) as FGLink),
+    };
+  }, [nodes, links]);
 
-    const rls: RuntimeLink[] = [];
-    for (const l of links) {
-      const s = map.get(l.source), t = map.get(l.target);
-      if (s && t) {
-        s.linkCount++;
-        t.linkCount++;
-        rls.push({ source: s, target: t, relationship: l.relationship });
-      }
-    }
-
-    nsRef.current = rns;
-    lsRef.current = rls;
-    alphaRef.current = ALPHA_INIT;
-  }, [nodes, links, width, height]);
-
-  // Physics tick
-  const tick = useCallback(() => {
-    const ns = nsRef.current, ls = lsRef.current;
-    const alpha = alphaRef.current;
-    if (alpha < ALPHA_MIN && !dragRef.current) return;
-    const cx = width / 2, cy = height / 2;
-
-    for (let i = 0; i < ns.length; i++) {
-      for (let j = i + 1; j < ns.length; j++) {
-        const a = ns[i], b = ns[j];
-        let dx = a.x - b.x, dy = a.y - b.y;
-        const d2 = dx * dx + dy * dy || 1;
-        const d = Math.sqrt(d2);
-        const f = (REPULSION * alpha) / d2;
-        dx = (dx / d) * f; dy = (dy / d) * f;
-        if (!a.pinned) { a.vx += dx; a.vy += dy; }
-        if (!b.pinned) { b.vx -= dx; b.vy -= dy; }
-      }
-    }
-
-    for (const l of ls) {
-      const dx = l.target.x - l.source.x, dy = l.target.y - l.source.y;
-      const d = Math.sqrt(dx * dx + dy * dy) || 1;
-      const f = (d - REST_LEN) * ATTRACTION * alpha;
-      const fx = (dx / d) * f, fy = (dy / d) * f;
-      if (!l.source.pinned) { l.source.vx += fx; l.source.vy += fy; }
-      if (!l.target.pinned) { l.target.vx -= fx; l.target.vy -= fy; }
-    }
-
-    for (const n of ns) {
-      if (n.pinned) { n.vx = 0; n.vy = 0; continue; }
-      n.vx += (cx - n.x) * GRAVITY * alpha;
-      n.vy += (cy - n.y) * GRAVITY * alpha;
-      n.vx *= V_DECAY; n.vy *= V_DECAY;
-      n.x += n.vx; n.y += n.vy;
-      n.x = Math.max(40, Math.min(width - 40, n.x));
-      n.y = Math.max(40, Math.min(height - 40, n.y));
-    }
-    alphaRef.current = Math.max(ALPHA_MIN, alpha - ALPHA_DECAY);
-  }, [width, height]);
-
-  // Determine which nodes are "neighbors" of hovered
-  const isNeighbor = useCallback((node: RuntimeNode): boolean => {
-    const h = hovRef.current;
-    if (!h || node === h) return false;
-    return lsRef.current.some(
-      l => (l.source === h && l.target === node) || (l.target === h && l.source === node),
-    );
-  }, []);
-
-  // Draw
+  /* Fullscreen resize */
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    ctx.scale(dpr, dpr);
-
-    function draw() {
-      if (!ctx) return;
-      tick();
-      ctx.clearRect(0, 0, width, height);
-      const h = hovRef.current;
-
-      // Links
-      for (const l of lsRef.current) {
-        const lit = h && (l.source === h || l.target === h);
-        ctx.beginPath();
-        ctx.moveTo(l.source.x, l.source.y);
-        ctx.lineTo(l.target.x, l.target.y);
-        ctx.strokeStyle = lit ? "rgba(250,250,250,0.4)" : "rgba(255,255,255,0.08)";
-        ctx.lineWidth = lit ? 1.5 : 0.6;
-        ctx.stroke();
+    function handleResize() {
+      if (fullscreen) {
+        setFsWidth(window.innerWidth - 56);
+        setFsHeight(window.innerHeight);
       }
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [fullscreen]);
 
-      // Nodes
-      for (const n of nsRef.current) {
-        const isH = n === h;
-        const isN = isNeighbor(n);
-        const color = nodeColor(n.group);
-        const r = isH ? R + 4 : isN ? R + 1 : R;
+  /* Re-zoom on fullscreen toggle */
+  useEffect(() => {
+    if (fullscreen && graphRef.current) {
+      setTimeout(() => graphRef.current?.zoomToFit(400, 60), 200);
+    }
+  }, [fullscreen]);
 
-        // Glow for hovered
-        if (isH) {
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, r + 10, 0, Math.PI * 2);
-          const g = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, r + 10);
-          g.addColorStop(0, color + "50");
-          g.addColorStop(1, color + "00");
-          ctx.fillStyle = g;
-          ctx.fill();
-        }
+  /* Escape to exit fullscreen */
+  useEffect(() => {
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === "Escape" && fullscreen) setFullscreen(false);
+    }
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [fullscreen]);
 
+  /* Neighbour lookup */
+  const connectedIds = useCallback(
+    (id: string | null): Set<string> => {
+      if (!id) return new Set();
+      const set = new Set<string>([id]);
+      for (const l of links) {
+        if (l.source === id) set.add(l.target);
+        if (l.target === id) set.add(l.source);
+      }
+      return set;
+    },
+    [links],
+  );
+
+  const activeSet = connectedIds(selectedId);
+
+  function handleNodeClick(node: FGNode) {
+    const newId = selectedId === node.id ? null : node.id;
+    setSelectedId(newId);
+    if (onNodeClick) onNodeClick(newId ? (node as unknown as GraphNode) : null);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Canvas: nodes                                                       */
+  /* ------------------------------------------------------------------ */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const paintNode = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (node: any, ctx: CanvasRenderingContext2D) => {
+      const conns: number = node.connections || 0;
+      const baseR = 6 + Math.min(conns * 1.2, 9);
+      const color: string = nodeColor(node.group);
+      const isSelected = node.id === selectedId;
+      const isConnected = activeSet.has(node.id);
+      const dimmed = !!selectedId && !isConnected;
+
+      const r = isSelected ? baseR + 6 : isConnected && selectedId ? baseR + 2 : baseR;
+      const cx: number = node.x ?? 0;
+      const cy: number = node.y ?? 0;
+
+      /* Glow ring — selected */
+      if (isSelected) {
         ctx.beginPath();
-        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = isH || isN ? color : color + "99";
+        ctx.arc(cx, cy, r + 14, 0, Math.PI * 2);
+        const g = ctx.createRadialGradient(cx, cy, r, cx, cy, r + 14);
+        g.addColorStop(0, color + "55");
+        g.addColorStop(1, color + "00");
+        ctx.fillStyle = g;
         ctx.fill();
-        ctx.strokeStyle = "rgba(26,26,26,0.6)";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        // Labels: only for hovered node and its direct neighbors
-        if (isH || isN) {
-          ctx.font = isH ? "bold 11px Geist, sans-serif" : "10px Geist, sans-serif";
-          ctx.textAlign = "center";
-          const lbl = n.label.length > 30 ? n.label.slice(0, 29) + "…" : n.label;
-
-          // Dark text background
-          const tw = ctx.measureText(lbl).width;
-          ctx.fillStyle = "rgba(26,26,26,0.85)";
-          ctx.fillRect(n.x - tw / 2 - 4, n.y - r - 18, tw + 8, 15);
-          ctx.fillStyle = "#FAFAFA";
-          ctx.fillText(lbl, n.x, n.y - r - 7);
-        }
       }
 
-      animRef.current = requestAnimationFrame(draw);
+      /* Subtle glow — connected neighbours */
+      if (isConnected && !isSelected && selectedId) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 7, 0, Math.PI * 2);
+        const g = ctx.createRadialGradient(cx, cy, r, cx, cy, r + 7);
+        g.addColorStop(0, color + "35");
+        g.addColorStop(1, color + "00");
+        ctx.fillStyle = g;
+        ctx.fill();
+      }
+
+      /* Node circle */
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = dimmed ? color + "18" : color;
+      ctx.fill();
+      if (!dimmed) {
+        ctx.strokeStyle = color + "45";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      /* Label — always visible; prominence scales with selection state */
+      const maxLen = isSelected ? 26 : 14;
+      const raw = node.label || node.id || "";
+      const label = raw.length > maxLen ? raw.slice(0, maxLen - 1) + "…" : raw;
+      const fs = isSelected ? 10 : 7;
+      ctx.font = `${isSelected ? "600 " : ""}${fs}px Inter, -apple-system, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = dimmed
+        ? "rgba(37,37,37,0.10)"
+        : isSelected
+          ? "#252525"
+          : isConnected && selectedId
+            ? "rgba(37,37,37,0.75)"
+            : "rgba(37,37,37,0.50)";
+      ctx.fillText(label, cx, cy + r + 3);
+    },
+    [selectedId, activeSet],
+  );
+
+  /* ------------------------------------------------------------------ */
+  /* Canvas: links                                                       */
+  /* ------------------------------------------------------------------ */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const paintLink = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (link: any, ctx: CanvasRenderingContext2D) => {
+      const srcId = typeof link.source === "object" ? link.source.id : link.source;
+      const tgtId = typeof link.target === "object" ? link.target.id : link.target;
+      const isActive = !!selectedId && activeSet.has(srcId) && activeSet.has(tgtId);
+      const dimmed = !!selectedId && !isActive;
+
+      const src = typeof link.source === "object" ? link.source : null;
+      const tgt = typeof link.target === "object" ? link.target : null;
+      if (!src || !tgt) return;
+
+      ctx.beginPath();
+      ctx.moveTo(src.x ?? 0, src.y ?? 0);
+      ctx.lineTo(tgt.x ?? 0, tgt.y ?? 0);
+      ctx.strokeStyle = dimmed
+        ? "rgba(37,37,37,0.02)"
+        : isActive
+          ? "rgba(37,37,37,0.35)"
+          : "rgba(37,37,37,0.07)";
+      ctx.lineWidth = isActive ? 2 : 0.5;
+      ctx.stroke();
+    },
+    [selectedId, activeSet],
+  );
+
+  /* ------------------------------------------------------------------ */
+  /* Helpers                                                              */
+  /* ------------------------------------------------------------------ */
+  function toggleFullscreen() {
+    setFullscreen((f) => !f);
+  }
+
+  function handleEngineStop() {
+    if (!hasZoomed.current && graphRef.current) {
+      graphRef.current.zoomToFit(400, 60);
+      hasZoomed.current = true;
     }
-    animRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(animRef.current);
-  }, [width, height, tick, isNeighbor]);
-
-  function findNode(mx: number, my: number): RuntimeNode | null {
-    for (const n of nsRef.current) {
-      const dx = n.x - mx, dy = n.y - my;
-      if (dx * dx + dy * dy < (R + 6) ** 2) return n;
-    }
-    return null;
   }
 
-  function pos(e: React.MouseEvent<HTMLCanvasElement>) {
-    const r = canvasRef.current!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  }
+  const displayWidth = fullscreen ? fsWidth : width;
+  const displayHeight = fullscreen ? fsHeight : height;
 
-  function onMove(e: React.MouseEvent<HTMLCanvasElement>) {
-    const { x, y } = pos(e);
-    if (dragRef.current) {
-      dragRef.current.x = x;
-      dragRef.current.y = y;
-      alphaRef.current = Math.max(alphaRef.current, 0.15);
-      return;
-    }
-    const f = findNode(x, y);
-    hovRef.current = f;
-    setHovered(f);
-  }
-
-  function onDown(e: React.MouseEvent<HTMLCanvasElement>) {
-    const f = findNode(pos(e).x, pos(e).y);
-    if (f) { dragRef.current = f; f.pinned = true; alphaRef.current = 0.3; }
-  }
-
-  function onUp() {
-    if (dragRef.current) {
-      if (onNodeClick && hovRef.current === dragRef.current) onNodeClick(dragRef.current);
-      dragRef.current.pinned = false;
-      dragRef.current = null;
-    }
-  }
-
+  /* ------------------------------------------------------------------ */
+  /* Render                                                               */
+  /* ------------------------------------------------------------------ */
   return (
-    <div className="relative">
-      <canvas
-        ref={canvasRef}
-        style={{ width, height, cursor: dragRef.current ? "grabbing" : hovered ? "grab" : "default", borderRadius: 12 }}
-        className="card"
-        onMouseMove={onMove}
-        onMouseDown={onDown}
-        onMouseUp={onUp}
-        onMouseLeave={onUp}
-      />
-      <div className="absolute bottom-4 left-4 flex gap-4 rounded-lg bg-[var(--color-surface)]/90 border border-[var(--color-border)] px-4 py-2.5 text-[11px] backdrop-blur-sm">
-        {[
-          { label: "KB Article", color: "#3B82F6" },
-          { label: "Script", color: "#8B5CF6" },
-          { label: "Ticket", color: "#10B981" },
-          { label: "Conversation", color: "#F59E0B" },
-        ].map(({ label, color }) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <span className="inline-block h-3 w-3 rounded-full shadow-sm" style={{ backgroundColor: color }} />
-            <span className="font-medium text-[var(--color-text-muted)]">{label}</span>
-          </div>
-        ))}
-      </div>
-      {hovered && !dragRef.current && (
-        <div className="absolute right-4 top-4 card max-w-72 p-4">
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: nodeColor(hovered.group) }} />
-            <span className="badge bg-neutral-100 text-[var(--color-text-muted)] capitalize">
-              {hovered.group.replace("_", " ")}
-            </span>
-          </div>
-          <p className="mt-2 text-sm font-semibold text-[var(--color-text)]">{hovered.label}</p>
-          <p className="mt-1 font-mono text-[10px] text-[var(--color-text-muted)]">{hovered.id}</p>
-          <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">{hovered.metadata?.module || hovered.metadata?.status || ""}</p>
-        </div>
+    <>
+      {/* Backdrop for fullscreen */}
+      {fullscreen && (
+        <div
+          className="fixed inset-0 z-[9998] bg-[var(--color-bg)]/80 backdrop-blur-sm"
+          onClick={toggleFullscreen}
+        />
       )}
-    </div>
+
+      <div
+        ref={containerRef}
+        className={
+          fullscreen
+            ? "fixed inset-0 z-[9999] ml-14 overflow-hidden bg-[var(--color-bg)]"
+            : "card relative overflow-hidden"
+        }
+      >
+        <ForceGraph2D
+          ref={graphRef}
+          graphData={graphData}
+          width={displayWidth}
+          height={displayHeight}
+          backgroundColor="#FAFAFA"
+          nodeCanvasObject={paintNode}
+          linkCanvasObject={paintLink}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D) => {
+            ctx.beginPath();
+            ctx.arc(node.x ?? 0, node.y ?? 0, 14, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+          }}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onNodeClick={(node: any) => handleNodeClick(node)}
+          onBackgroundClick={() => {
+            setSelectedId(null);
+            if (onNodeClick) onNodeClick(null);
+          }}
+          onEngineStop={handleEngineStop}
+          d3AlphaDecay={0.008}
+          d3VelocityDecay={0.2}
+          cooldownTicks={300}
+          warmupTicks={150}
+          enableZoomInteraction={true}
+          enablePanInteraction={true}
+        />
+
+        {/* Legend */}
+        <div className="absolute bottom-4 left-4 flex gap-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]/95 px-4 py-2.5 text-[11px] backdrop-blur-sm">
+          {[
+            { label: "KB Article", color: "#3B82F6" },
+            { label: "Script", color: "#8B5CF6" },
+            { label: "Ticket", color: "#10B981" },
+            { label: "Conversation", color: "#F59E0B" },
+          ].map(({ label, color }) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+              <span className="font-medium text-[var(--color-text-muted)]">{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Fullscreen toggle */}
+        <button
+          onClick={toggleFullscreen}
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+          title={fullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
+        >
+          {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+        </button>
+
+        {/* Selected node panel */}
+        {selectedId && (
+          <div className="absolute right-4 top-14 max-w-72 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)]/95 p-4 shadow-lg backdrop-blur-sm">
+            {(() => {
+              const node = nodes.find((n) => n.id === selectedId);
+              if (!node) return null;
+              const neighbors = links.filter(
+                (l) => l.source === selectedId || l.target === selectedId,
+              );
+              return (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="inline-block h-3 w-3 rounded-full"
+                        style={{ backgroundColor: nodeColor(node.group) }}
+                      />
+                      <span className="badge bg-[var(--color-surface-elevated)] capitalize text-[var(--color-text-muted)]">
+                        {node.group.replace("_", " ")}
+                      </span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedId(null);
+                        if (onNodeClick) onNodeClick(null);
+                      }}
+                      className="rounded-md p-0.5 text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-[var(--color-text)]">
+                    {node.label}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[10px] text-[var(--color-text-dim)]">
+                    {node.id}
+                  </p>
+                  {neighbors.length > 0 && (
+                    <div className="mt-3 border-t border-[var(--color-border)] pt-2">
+                      <p className="font-mono text-[9px] tracking-widest text-[var(--color-text-dim)]">
+                        {neighbors.length} CONNECTION
+                        {neighbors.length !== 1 ? "S" : ""}
+                      </p>
+                      <div className="mt-1.5 space-y-1">
+                        {neighbors.slice(0, 6).map((l, i) => {
+                          const otherId =
+                            l.source === selectedId ? l.target : l.source;
+                          const other = nodes.find((n) => n.id === otherId);
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-center gap-1.5 text-[10px]"
+                            >
+                              <span
+                                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                                style={{
+                                  backgroundColor: nodeColor(other?.group ?? ""),
+                                }}
+                              />
+                              <span className="truncate text-[var(--color-text-muted)]">
+                                {other?.label?.slice(0, 30) ?? otherId}
+                              </span>
+                              <span className="ml-auto shrink-0 font-mono text-[var(--color-text-dim)]">
+                                {l.relationship}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {neighbors.length > 6 && (
+                          <p className="text-[10px] text-[var(--color-text-dim)]">
+                            +{neighbors.length - 6} more
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
