@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { nodeColor } from "@/lib/utils";
-import { Maximize2, Minimize2, X } from "lucide-react";
+import { X } from "lucide-react";
 import type { GraphNode, GraphLink } from "@/lib/api";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
@@ -58,10 +58,7 @@ export function KnowledgeGraph({ nodes, links, width, height, onNodeClick }: Pro
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const graphRef = useRef<any>(undefined);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [fullscreen, setFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [fsWidth, setFsWidth] = useState(width);
-  const [fsHeight, setFsHeight] = useState(height);
   const forcesReady = useRef(false);
   const hasZoomed = useRef(false);
 
@@ -116,47 +113,6 @@ export function KnowledgeGraph({ nodes, links, width, height, onNodeClick }: Pro
     }, 80);
     return () => clearInterval(timer);
   }, []);
-
-  /* Keep fullscreen dimensions in sync with window */
-  useEffect(() => {
-    function handleResize() {
-      if (fullscreen) {
-        setFsWidth(window.innerWidth - 56);
-        setFsHeight(window.innerHeight);
-      }
-    }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [fullscreen]);
-
-  /* Zoom-to-fit after entering fullscreen — wait for new dimensions */
-  useEffect(() => {
-    if (!fullscreen) return;
-    /* Two-frame delay ensures React has rendered with new dimensions */
-    let raf1: number;
-    let raf2: number;
-    const t = setTimeout(() => {
-      raf1 = requestAnimationFrame(() => {
-        raf2 = requestAnimationFrame(() => {
-          graphRef.current?.zoomToFit(400, 60);
-        });
-      });
-    }, 100);
-    return () => {
-      clearTimeout(t);
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
-    };
-  }, [fullscreen]);
-
-  /* Escape to exit fullscreen */
-  useEffect(() => {
-    function handleEsc(e: KeyboardEvent) {
-      if (e.key === "Escape" && fullscreen) setFullscreen(false);
-    }
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [fullscreen]);
 
   /* Neighbour lookup */
   const connectedIds = useCallback(
@@ -284,16 +240,6 @@ export function KnowledgeGraph({ nodes, links, width, height, onNodeClick }: Pro
   /* ---------------------------------------------------------------- */
   /* Helpers                                                           */
   /* ---------------------------------------------------------------- */
-  function toggleFullscreen() {
-    const entering = !fullscreen;
-    if (entering) {
-      /* Set dimensions BEFORE the flip so first render is correct */
-      setFsWidth(window.innerWidth - 56);
-      setFsHeight(window.innerHeight);
-    }
-    setFullscreen(entering);
-  }
-
   function handleEngineStop() {
     /* Only zoom AFTER gravity forces have been configured and settled */
     if (forcesReady.current && !hasZoomed.current && graphRef.current) {
@@ -302,28 +248,16 @@ export function KnowledgeGraph({ nodes, links, width, height, onNodeClick }: Pro
     }
   }
 
-  const displayWidth = fullscreen ? fsWidth : width;
-  const displayHeight = fullscreen ? fsHeight : height;
+  const displayWidth = width;
+  const displayHeight = height;
 
   /* ---------------------------------------------------------------- */
   /* Render                                                            */
   /* ---------------------------------------------------------------- */
   return (
-    <>
-      {fullscreen && (
-        <div
-          className="fixed inset-0 z-[9998] bg-[var(--color-bg)]/80 backdrop-blur-sm"
-          onClick={toggleFullscreen}
-        />
-      )}
-
       <div
         ref={containerRef}
-        className={
-          fullscreen
-            ? "fixed inset-0 z-[9999] ml-14 overflow-hidden bg-[var(--color-bg)]"
-            : "card relative overflow-hidden"
-        }
+        className="card relative overflow-hidden"
       >
         <ForceGraph2D
           ref={graphRef}
@@ -372,15 +306,6 @@ export function KnowledgeGraph({ nodes, links, width, height, onNodeClick }: Pro
             </div>
           ))}
         </div>
-
-        {/* Fullscreen toggle */}
-        <button
-          onClick={toggleFullscreen}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
-          title={fullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
-        >
-          {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-        </button>
 
         {/* Selected node panel */}
         {selectedId && (
@@ -465,6 +390,5 @@ export function KnowledgeGraph({ nodes, links, width, height, onNodeClick }: Pro
           </div>
         )}
       </div>
-    </>
   );
 }

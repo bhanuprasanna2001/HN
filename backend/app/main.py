@@ -238,7 +238,7 @@ async def get_knowledge_graph(limit: int = Query(300, ge=10, le=500)):
             kb_data = state["kb_articles"].get(kb_id, {})
             nodes_map[kb_id] = GraphNode(
                 id=kb_id,
-                label=str(kb_data.get("Title", kb_id))[:60],
+                label=str(kb_data.get("Title", kb_id)),
                 group="kb_article",
                 metadata={"module": kb_data.get("Module", ""), "category": kb_data.get("Category", "")},
             )
@@ -256,11 +256,11 @@ async def get_knowledge_graph(limit: int = Query(300, ge=10, le=500)):
             meta: dict[str, Any] = {}
             if source_group == "ticket":
                 tk = state["tickets"].get(source_id, {})
-                label = str(tk.get("Subject", source_id))[:60]
+                label = str(tk.get("Subject", source_id))
                 meta = {"status": tk.get("Status", ""), "priority": tk.get("Priority", "")}
             elif source_group == "script":
                 sc = state["scripts"].get(source_id, {})
-                label = str(sc.get("Script_Title", source_id))[:60]
+                label = str(sc.get("Script_Title", source_id))
             elif source_group == "conversation":
                 conv = state["conversations"].get(source_id, {})
                 if not conv:
@@ -268,7 +268,7 @@ async def get_knowledge_graph(limit: int = Query(300, ge=10, le=500)):
                         if c.get("Conversation_ID") == source_id:
                             conv = c
                             break
-                label = str(conv.get("Issue_Summary", source_id))[:60]
+                label = str(conv.get("Issue_Summary", source_id))
 
             nodes_map[source_id] = GraphNode(
                 id=source_id, label=label, group=source_group, metadata=meta
