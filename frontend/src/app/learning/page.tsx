@@ -37,26 +37,33 @@ export default function LearningPage() {
   const [reviewNotes, setReviewNotes] = useState("");
   const [scanLoading, setScanLoading] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [draftError, setDraftError] = useState("");
+  const [reviewError, setReviewError] = useState("");
+  const [editedDraftBody, setEditedDraftBody] = useState("");
 
   useEffect(() => {
     setLoading(true);
+    setError("");
     fetchLearningEvents(filter, page)
       .then((res) => {
         setEvents(res.data);
         setTotal(res.meta.total);
       })
-      .catch(() => {})
+      .catch((e) => setError(e.message || "Failed to load events"))
       .finally(() => setLoading(false));
   }, [filter, page]);
 
   async function handleGenerateDraft(ticketNumber: string) {
     setDraftLoading(true);
     setDraft(null);
+    setDraftError("");
     try {
       const res = await generateDraft(ticketNumber);
       setDraft(res.data);
-    } catch {
-      // Silently handle
+      setEditedDraftBody(res.data.body);
+    } catch (e) {
+      setDraftError(e instanceof Error ? e.message : "Failed to generate draft");
     } finally {
       setDraftLoading(false);
     }
@@ -64,14 +71,30 @@ export default function LearningPage() {
 
   async function handleReview(eventId: string, action: "approve" | "reject") {
     setReviewLoading(eventId);
+    setReviewError("");
     try {
       const res = await reviewEvent(eventId, action, reviewNotes);
       setEvents((prev) =>
         prev.map((e) => (e.event_id === eventId ? { ...e, ...res.data } : e)),
       );
       setReviewNotes("");
-    } catch {
-      // Silently handle
+
+      // Store approved KB ID in localStorage so the copilot can show a "NEW" badge
+      if (action === "approve") {
+        const kbId = res.data.proposed_kb_id;
+        if (kbId) {
+          try {
+            const key = "speare-published-kb-ids";
+            const existing = JSON.parse(localStorage.getItem(key) || "[]") as string[];
+            if (!existing.includes(kbId)) {
+              existing.push(kbId);
+              localStorage.setItem(key, JSON.stringify(existing));
+            }
+          } catch { /* ignore localStorage errors */ }
+        }
+      }
+    } catch (e) {
+      setReviewError(e instanceof Error ? e.message : "Review failed — please retry");
     } finally {
       setReviewLoading(null);
     }
@@ -139,7 +162,7 @@ export default function LearningPage() {
               setEvents(evts.data);
               setTotal(evts.meta.total);
               setPage(1);
-            } catch { setScanResult("Scan failed"); }
+            } catch (e) { setScanResult(`Scan failed: ${e instanceof Error ? e.message : "Unknown error"}`); }
             finally { setScanLoading(false); }
           }}
           disabled={scanLoading}
@@ -172,9 +195,15 @@ export default function LearningPage() {
       </div>
 
       {/* Events list */}
-      {loading ? (
+      {error ? (
+        <div className="card border-red-200 p-4 text-sm text-[var(--color-error)]">{error}</div>
+      ) : loading ? (
         <div className="flex h-32 items-center justify-center">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
+        </div>
+      ) : events.length === 0 ? (
+        <div className="card flex h-32 items-center justify-center text-sm text-[var(--color-text-muted)]">
+          No learning events found{filter ? ` with status "${filter}"` : ""}.
         </div>
       ) : (
         <div className="space-y-2">
@@ -205,6 +234,11 @@ export default function LearningPage() {
                       <span className="font-mono text-[10px] text-[var(--color-text-muted)]">
                         Ticket: {event.ticket_number}
                       </span>
+                      {(event as unknown as Record<string, unknown>).best_kb_score !== undefined && (
+                        <span className="font-mono text-[10px] text-[var(--color-error)]">
+                          Best KB match: {(Number((event as unknown as Record<string, unknown>).best_kb_score) * 100).toFixed(0)}%
+                        </span>
+                      )}
                     </div>
                   </div>
                   <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", statusColor(event.status))}>
@@ -259,14 +293,24 @@ export default function LearningPage() {
                       </div>
                     )}
 
-                    {/* Draft preview */}
+                    {draftError && expandedId === event.event_id && (
+                      <p className="mt-2 text-xs text-[var(--color-error)]">{draftError}</p>
+                    )}
+
+                    {/* Draft preview — editable */}
                     {draft && expandedId === event.event_id && (
                       <div className="mt-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
-                        <p className="font-mono text-[10px] tracking-widest text-[var(--color-text-dim)]">GENERATED KB DRAFT</p>
-                        <p className="mt-2 text-base font-semibold text-[var(--color-text)]">{draft.title}</p>
-                        <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <Markdown content={draft.body} />
+                        <div className="flex items-center justify-between">
+                          <p className="font-mono text-[10px] tracking-widest text-[var(--color-text-dim)]">GENERATED KB DRAFT — EDITABLE</p>
+                          <span className="text-[9px] text-[var(--color-text-dim)]">Edit below before approving</span>
                         </div>
+                        <p className="mt-2 text-base font-semibold text-[var(--color-text)]">{draft.title}</p>
+                        <textarea
+                          value={editedDraftBody}
+                          onChange={(e) => setEditedDraftBody(e.target.value)}
+                          className="mt-3 min-h-48 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 font-mono text-xs leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:border-[var(--color-text-dim)] focus:outline-none"
+                          placeholder="Edit the draft body here..."
+                        />
 
                         {/* Lineage */}
                         {draft.lineage.length > 0 && (
@@ -292,6 +336,9 @@ export default function LearningPage() {
                         <p className="mb-2 text-xs font-medium text-[var(--color-text)]">
                           Review Decision
                         </p>
+                        {reviewError && (
+                          <p className="mb-2 rounded-md bg-red-50 px-3 py-1.5 text-xs text-[var(--color-error)]">{reviewError}</p>
+                        )}
                         <textarea
                           value={reviewNotes}
                           onChange={(e) => setReviewNotes(e.target.value)}

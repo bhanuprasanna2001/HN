@@ -98,12 +98,21 @@ def copilot_answer(
 
     results = vector_store.search(question, collections=collections, top_k=settings.retrieval_top_k)
 
+    empty_details = {
+        "method": "cosine_similarity",
+        "threshold": settings.similarity_threshold,
+        "top_match_score": 0.0,
+        "sources_searched": 0,
+        "is_below_threshold": True,
+    }
+
     if not results:
         return {
             "answer": "I couldn't find relevant information for your question. Please escalate to a Tier 3 engineer.",
             "confidence": 0.0,
             "sources": [],
             "answer_type": "UNKNOWN",
+            "confidence_details": empty_details,
         }
 
     context_parts = []
@@ -127,13 +136,25 @@ def copilot_answer(
     else:
         client = OpenAI(api_key=settings.openai_api_key)
         user_prompt = f"Question: {question}\n\nRelevant Sources:\n{context}"
-        answer = _call_llm(client, settings.openai_model, COPILOT_SYSTEM, user_prompt)
+        try:
+            answer = _call_llm(client, settings.openai_model, COPILOT_SYSTEM, user_prompt)
+        except Exception as e:
+            logger.warning("Copilot LLM failed: %s — using fallback", e)
+            answer = _build_fallback_answer(results)
 
+    top_score = round(results[0]["score"], 4)
     return {
         "answer": answer,
-        "confidence": round(results[0]["score"], 4),
+        "confidence": top_score,
         "sources": results[:5],
         "answer_type": answer_type,
+        "confidence_details": {
+            "method": "cosine_similarity",
+            "threshold": settings.similarity_threshold,
+            "top_match_score": top_score,
+            "sources_searched": len(results),
+            "is_below_threshold": top_score < settings.similarity_threshold,
+        },
     }
 
 
@@ -164,7 +185,11 @@ def detect_gaps(
         if tk.get("Status") != "Closed" or not tk.get("Resolution"):
             continue
         tier = tk.get("Tier", 0)
-        if tier and float(tier) < 3:
+        try:
+            tier_val = float(tier) if tier else 0
+        except (ValueError, TypeError):
+            continue
+        if tier_val < 3:
             continue
 
         query = f"{tk.get('Subject', '')} {tk.get('Description', '')} {tk.get('Resolution', '')}"
@@ -237,7 +262,15 @@ def generate_kb_draft(
         }
 
     client = OpenAI(api_key=settings.openai_api_key)
-    raw = _call_llm(client, settings.openai_model, KB_GEN_SYSTEM, user_content, json_mode=True)
+    try:
+        raw = _call_llm(client, settings.openai_model, KB_GEN_SYSTEM, user_content, json_mode=True)
+    except Exception as e:
+        logger.warning("KB draft LLM failed: %s — using fallback", e)
+        return {
+            "title": f"Resolution: {ticket.get('Subject', 'Unknown Issue')}",
+            "body": f"## Problem\n{ticket.get('Description', '')}\n\n## Resolution\n{ticket.get('Resolution', '')}",
+            "tags": ticket.get("Tags", ""),
+        }
 
     try:
         return json.loads(raw.strip())
@@ -341,11 +374,16 @@ def score_qa(
         return _build_heuristic_qa(ticket, conversation, eval_mode)
 
     client = OpenAI(api_key=settings.openai_api_key)
+
+    system_prompt = QA_SYSTEM_COMPACT
+    if qa_rubric:
+        system_prompt += f"\n\nAdditional evaluation rubric from the organization:\n{qa_rubric[:2000]}"
+
     user_prompt = f"Evaluate this case:\n\n{case_info}"
 
     try:
         raw = _call_llm(
-            client, settings.openai_model, QA_SYSTEM_COMPACT,
+            client, settings.openai_model, system_prompt,
             user_prompt, temperature=0.1, json_mode=True,
         )
         result = json.loads(raw.strip())

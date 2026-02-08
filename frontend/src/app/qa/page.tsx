@@ -132,21 +132,27 @@ export default function QAPage() {
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [scoring, setScoring] = useState(false);
   const [qaResult, setQAResult] = useState<QAResult | null>(null);
+  const [ticketsError, setTicketsError] = useState("");
+  const [scoreError, setScoreError] = useState("");
 
   useEffect(() => {
+    setTicketsError("");
     fetchTickets(page, search, "Closed")
       .then((res: Paginated<Record<string, string>>) => { setTickets(res.data); setTotal(res.meta.total); })
-      .catch(() => {});
+      .catch((e) => setTicketsError(e.message || "Failed to load tickets"));
   }, [page, search]);
 
   async function handleScore(ticketNumber: string) {
     setSelectedTicket(ticketNumber);
     setScoring(true);
     setQAResult(null);
+    setScoreError("");
     try {
       const res = await scoreQA(ticketNumber);
       setQAResult(res.data as unknown as QAResult);
-    } catch { /* handle */ } finally { setScoring(false); }
+    } catch (e) {
+      setScoreError(e instanceof Error ? e.message : "QA scoring failed");
+    } finally { setScoring(false); }
   }
 
   const totalPages = Math.ceil(total / 20);
@@ -230,7 +236,9 @@ export default function QAPage() {
 
       {/* Results */}
       <div className="animate-fade-in-delay-2">
-        {scoring ? (
+        {scoreError ? (
+          <div className="card border-red-200 p-6 text-sm text-[var(--color-error)]">{scoreError}</div>
+        ) : scoring ? (
           <div className="card flex h-64 flex-col items-center justify-center gap-3">
             <Loader2 size={28} className="animate-spin text-[var(--color-primary)]" />
             <p className="text-sm font-medium text-[var(--color-text)]">Analyzing interaction quality…</p>

@@ -28,11 +28,20 @@ class SourceDocument(BaseModel):
     metadata: dict[str, Any] = {}
 
 
+class ConfidenceDetails(BaseModel):
+    method: str = "cosine_similarity"
+    threshold: float = 0.35
+    top_match_score: float = 0.0
+    sources_searched: int = 0
+    is_below_threshold: bool = False
+
+
 class CopilotResponse(BaseModel):
     answer: str
     confidence: float
     sources: list[SourceDocument]
     answer_type: str  # "SCRIPT" | "KB" | "TICKET_RESOLUTION" | "UNKNOWN"
+    confidence_details: ConfidenceDetails | dict = {}
 
 
 # ---------------------------------------------------------------------------

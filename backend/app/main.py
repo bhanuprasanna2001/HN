@@ -133,7 +133,12 @@ async def get_stats():
     data = state["data"]
     events = state["learning_events"]
 
-    tiers = [float(t.get("Tier", 0)) for t in data.get("Tickets", []) if t.get("Tier")]
+    tiers = []
+    for t in data.get("Tickets", []):
+        try:
+            tiers.append(float(t["Tier"]))
+        except (ValueError, TypeError, KeyError):
+            pass
     avg_tier = sum(tiers) / len(tiers) if tiers else 0
 
     return DashboardStats(
@@ -169,6 +174,7 @@ async def ask_copilot(query: CopilotQuery):
         confidence=result["confidence"],
         sources=[SourceDocument(**s) for s in result["sources"]],
         answer_type=result["answer_type"],
+        confidence_details=result.get("confidence_details", {}),
     )
 
 
@@ -369,28 +375,34 @@ async def review_event(action: ReviewAction):
         pass  # Allow re-review
 
     new_status = "Approved" if action.action == "approve" else "Rejected"
-    event["status"] = new_status
-    event["reviewer_role"] = "Human Reviewer"
-    event["review_notes"] = action.reviewer_notes
-    event["reviewed_at"] = datetime.now(timezone.utc).isoformat()
 
-    # If approved, add the new KB article to the vector index
+    # Index FIRST — if indexing fails, we don't want to mark as approved
     if new_status == "Approved" and event.get("proposed_kb_id"):
         ticket = state["tickets"].get(event["ticket_number"], {})
         if ticket:
             article_id = event["proposed_kb_id"]
             text = f"{event.get('draft_summary', '')}\n{ticket.get('Resolution', '')}"
-            state["vector_store"].add_kb_article(
-                article_id,
-                text,
-                {
-                    "title": event.get("draft_summary", "")[:500],
-                    "module": ticket.get("Module", ""),
-                    "category": ticket.get("Category", ""),
-                    "source_type": "generated",
-                    "doc_type": "kb_article",
-                },
-            )
+            try:
+                state["vector_store"].add_kb_article(
+                    article_id,
+                    text,
+                    {
+                        "title": event.get("draft_summary", "")[:500],
+                        "module": ticket.get("Module", ""),
+                        "category": ticket.get("Category", ""),
+                        "source_type": "generated",
+                        "doc_type": "kb_article",
+                    },
+                )
+            except Exception as e:
+                logger.error("Failed to index KB article %s: %s", article_id, e)
+                raise HTTPException(500, f"Failed to index article: {e}")
+
+    # Only update status AFTER successful indexing
+    event["status"] = new_status
+    event["reviewer_role"] = "Human Reviewer"
+    event["review_notes"] = action.reviewer_notes
+    event["reviewed_at"] = datetime.now(timezone.utc).isoformat()
 
     return {"data": event, "message": f"Event {action.event_id} {new_status.lower()}"}
 
@@ -416,6 +428,8 @@ async def scan_for_gaps():
             "detected_gap": f"No KB match above {state['settings'].similarity_threshold:.0%} for: {gap['subject'][:100]}",
             "proposed_kb_id": f"KB-AUTO-{len(state['learning_events']) + len(new_events) + 1:04d}",
             "draft_summary": f"Auto-detected gap for: {gap['subject']}",
+            "best_kb_score": round(gap.get("best_kb_score", 0), 4),
+            "best_kb_match": gap.get("best_kb_match", ""),
             "status": "Pending",
             "reviewer_role": "",
             "timestamp": datetime.now(timezone.utc).isoformat(),

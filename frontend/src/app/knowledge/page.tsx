@@ -16,23 +16,26 @@ export default function KnowledgePage() {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [graphError, setGraphError] = useState("");
+  const [articlesError, setArticlesError] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const [graphWidth, setGraphWidth] = useState(800);
 
   useEffect(() => {
     fetchKnowledgeGraph(200)
       .then(setGraphData)
-      .catch(() => {});
+      .catch((e) => setGraphError(e.message || "Failed to load graph"));
   }, []);
 
   useEffect(() => {
     setLoading(true);
+    setArticlesError("");
     fetchKBArticles(page, search)
       .then((res) => {
         setArticles(res.data);
         setTotalArticles(res.meta.total);
       })
-      .catch(() => {})
+      .catch((e) => setArticlesError(e.message || "Failed to load articles"))
       .finally(() => setLoading(false));
   }, [page, search]);
 
@@ -71,7 +74,9 @@ export default function KnowledgePage() {
             Drag nodes to rearrange · Click for details
           </p>
         </div>
-        {graphData && graphData.nodes.length > 0 ? (
+        {graphError ? (
+          <div className="card flex h-72 items-center justify-center text-sm text-[var(--color-error)]">{graphError}</div>
+        ) : graphData && graphData.nodes.length > 0 ? (
           <KnowledgeGraph
             nodes={graphData.nodes}
             links={graphData.links}
@@ -79,6 +84,8 @@ export default function KnowledgePage() {
             height={550}
             onNodeClick={handleNodeClick}
           />
+        ) : graphData && graphData.nodes.length === 0 ? (
+          <div className="card flex h-72 items-center justify-center text-sm text-[var(--color-text-muted)]">No graph data available</div>
         ) : (
           <div className="card flex h-72 items-center justify-center">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-primary)] border-t-transparent" />
@@ -145,9 +152,15 @@ export default function KnowledgePage() {
           </div>
         </div>
 
-        {loading ? (
+        {articlesError ? (
+          <div className="card border-red-200 p-4 text-sm text-[var(--color-error)]">{articlesError}</div>
+        ) : loading ? (
           <div className="card flex h-32 items-center justify-center">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-primary)] border-t-transparent" />
+          </div>
+        ) : articles.length === 0 ? (
+          <div className="card flex h-32 items-center justify-center text-sm text-[var(--color-text-muted)]">
+            {search ? `No articles matching "${search}"` : "No articles found"}
           </div>
         ) : (
           <div className="space-y-2">
