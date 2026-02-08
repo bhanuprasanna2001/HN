@@ -1,6 +1,6 @@
 # Speare AI — The Self-Learning Brain for Customer Support
 
-> **4th Hack Nation | RealPage Speare AI Challenge**
+> **4th Hack Nation | RealPage Speare AI Challenge** 
 >
 > A self-learning AI support layer that continuously reads customer interactions, extracts operational knowledge into a living knowledge base, and guides agents in real time — with human-in-the-loop governance, OWASP compliance scanning, and full provenance traceability.
 
