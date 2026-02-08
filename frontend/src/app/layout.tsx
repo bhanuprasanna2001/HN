@@ -20,10 +20,10 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
         />
       </head>
-      <body>
+      <body className="bg-dots">
         <Sidebar />
-        <main className="ml-56 min-h-screen bg-[var(--color-bg)]">
-          <div className="mx-auto max-w-6xl px-8 py-8">{children}</div>
+        <main className="ml-60 min-h-screen">
+          <div className="mx-auto max-w-[1120px] px-8 py-8">{children}</div>
         </main>
       </body>
     </html>

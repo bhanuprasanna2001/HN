@@ -1,8 +1,8 @@
 {
   "/_not-found/page": "/_not-found",
-  "/knowledge/page": "/knowledge",
+  "/copilot/page": "/copilot",
+  "/qa/page": "/qa",
   "/learning/page": "/learning",
   "/page": "/",
-  "/copilot/page": "/copilot",
-  "/qa/page": "/qa"
+  "/knowledge/page": "/knowledge"
 }

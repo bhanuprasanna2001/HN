@@ -1,4 +1,4 @@
-// File: /Users/bhanuprasanna/.cursor/worktrees/HN/yzr/frontend/src/app/learning/page.tsx
+// File: /Users/bhanuprasanna/Documents/Personal/hacks&meets/HN/frontend/src/app/learning/page.tsx
 import * as entry from '../../../../src/app/learning/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

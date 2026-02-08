@@ -12,6 +12,7 @@ dist/
 tmp/
 app/**/*.js
 app/**/*.js.map
+.next/
 
 # dependencies
 node_modules/

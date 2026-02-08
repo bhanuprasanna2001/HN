@@ -99,7 +99,7 @@
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "/Users/bhanuprasanna/.cursor/worktrees/HN/yzr/frontend",
+    "outputFileTracingRoot": "/Users/bhanuprasanna/Documents/Personal/hacks&meets/HN/frontend",
     "experimental": {
       "useSkewCookie": false,
       "cacheLife": {
@@ -289,7 +289,7 @@
     "bundlePagesRouterDependencies": false,
     "configFileName": "next.config.ts",
     "turbopack": {
-      "root": "/Users/bhanuprasanna/.cursor/worktrees/HN/yzr/frontend"
+      "root": "/Users/bhanuprasanna/Documents/Personal/hacks&meets/HN/frontend"
     },
     "_originalRewrites": {
       "beforeFiles": [],
@@ -302,7 +302,7 @@
       "fallback": []
     }
   },
-  "appDir": "/Users/bhanuprasanna/.cursor/worktrees/HN/yzr/frontend",
+  "appDir": "/Users/bhanuprasanna/Documents/Personal/hacks&meets/HN/frontend",
   "relativeAppDir": "",
   "files": [
     ".next/routes-manifest.json",

@@ -1,4 +1,4 @@
-// File: /Users/bhanuprasanna/.cursor/worktrees/HN/yzr/frontend/src/app/copilot/page.tsx
+// File: /Users/bhanuprasanna/Documents/Personal/hacks&meets/HN/frontend/src/app/copilot/page.tsx
 import * as entry from '../../../../src/app/copilot/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

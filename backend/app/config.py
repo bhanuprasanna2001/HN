@@ -1,9 +1,14 @@
 """Application configuration loaded from environment variables."""
 
-import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+
+# Search for .env in project root first, then backend dir
+_ENV_FILE = str(_PROJECT_ROOT / ".env") if (_PROJECT_ROOT / ".env").exists() else str(_BACKEND_ROOT / ".env")
 
 
 class Settings(BaseSettings):
@@ -20,20 +25,17 @@ class Settings(BaseSettings):
     backend_port: int = 8000
 
     # Paths
-    data_path: str = str(
-        Path(__file__).resolve().parent.parent.parent / "data" / "SupportMind__Final_Data.xlsx"
-    )
-    chroma_persist_dir: str = str(
-        Path(__file__).resolve().parent.parent / "chroma_db"
-    )
+    data_path: str = str(_PROJECT_ROOT / "data" / "SupportMind__Final_Data.xlsx")
+    chroma_persist_dir: str = str(_BACKEND_ROOT / "chroma_db")
 
     # RAG
     retrieval_top_k: int = 5
     similarity_threshold: float = 0.35
 
     class Config:
-        env_file = ".env"
+        env_file = _ENV_FILE
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 def get_settings() -> Settings:

@@ -10,6 +10,8 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { fetchTickets, scoreQA, type Paginated } from "@/lib/api";
 import { cn, truncate } from "@/lib/utils";
@@ -32,6 +34,7 @@ interface QAResult {
     findings: OWASPFinding[];
     checks_run: string[];
     owasp_frameworks: string[];
+    total_checks?: number;
   };
   Overall_Weighted_Score?: string;
   Contact_Summary?: string;
@@ -47,54 +50,81 @@ function SeverityBadge({ severity }: { severity: string }) {
     LOW: "bg-blue-100 text-blue-800 border-blue-200",
   };
   return (
-    <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold", styles[severity] ?? styles.LOW)}>
+    <span className={cn("badge border", styles[severity] ?? styles.LOW)}>
       {severity}
     </span>
   );
 }
 
-function QASection({ title, data }: { title: string; data: Record<string, unknown> }) {
-  const entries = Object.entries(data).filter(([k]) => k !== "Final_Weighted_Score");
-  const score = data.Final_Weighted_Score as string | undefined;
+function ScoreRing({ score }: { score: string }) {
+  const num = parseInt(score) || 0;
+  const color = num >= 80 ? "#16A34A" : num >= 60 ? "#F59E0B" : "#DC2626";
+  const circumference = 2 * Math.PI * 24;
+  const offset = circumference - (num / 100) * circumference;
 
   return (
-    <div className="rounded-md border border-[var(--color-border)] p-4">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold text-[var(--color-text)]">{title}</h4>
-        {score && score !== "N/A" && (
-          <span className="rounded-full bg-[var(--color-accent)] px-2.5 py-0.5 text-[11px] font-semibold text-white">
-            {score}
-          </span>
-        )}
-      </div>
-      {entries.length > 0 && (
-        <div className="mt-3 space-y-2">
-          {entries.map(([key, val]) => {
-            const item = val as { score?: string; evidence?: string; tracking_items?: string[] } | string;
-            const itemScore = typeof item === "object" ? item?.score : item;
-            const evidence = typeof item === "object" ? item?.evidence : "";
-            return (
-              <div key={key} className="flex items-start gap-2 text-[11px]">
-                {itemScore === "Yes" ? (
-                  <CheckCircle2 size={13} className="mt-0.5 shrink-0 text-emerald-500" />
-                ) : itemScore === "No" ? (
-                  <XCircle size={13} className="mt-0.5 shrink-0 text-red-500" />
-                ) : (
-                  <div className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full bg-neutral-200" />
-                )}
-                <div>
-                  <span className="text-[var(--color-text)]">{key.replace(/_/g, " ")}</span>
-                  {evidence && (
-                    <p className="mt-0.5 text-[10px] italic text-[var(--color-text-muted)]">
-                      {truncate(String(evidence), 150)}
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+    <div className="relative flex h-16 w-16 items-center justify-center">
+      <svg className="absolute" width={56} height={56} viewBox="0 0 56 56">
+        <circle cx={28} cy={28} r={24} fill="none" stroke="#F0F0F0" strokeWidth={3} />
+        <circle
+          cx={28} cy={28} r={24} fill="none" stroke={color} strokeWidth={3}
+          strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset}
+          transform="rotate(-90 28 28)"
+          style={{ transition: "stroke-dashoffset 1s ease-out" }}
+        />
+      </svg>
+      <span className="text-sm font-bold" style={{ color }}>{score}</span>
+    </div>
+  );
+}
+
+function QASection({ title, data, accentClass }: { title: string; data: Record<string, unknown>; accentClass: string }) {
+  const entries = Object.entries(data).filter(([k]) => k !== "Final_Weighted_Score");
+  const score = data.Final_Weighted_Score as string | undefined;
+  if (entries.length === 0 && (!score || score === "N/A")) return null;
+
+  const yesCount = entries.filter(([, v]) => (v as { score?: string })?.score === "Yes").length;
+  const noCount = entries.filter(([, v]) => (v as { score?: string })?.score === "No").length;
+
+  return (
+    <div className="card overflow-hidden">
+      <div className={cn("flex items-center justify-between px-4 py-3", accentClass)}>
+        <div>
+          <h4 className="text-xs font-bold text-[var(--color-text)]">{title}</h4>
+          <p className="mt-0.5 text-[10px] text-[var(--color-text-muted)]">
+            {yesCount} passed · {noCount} failed · {entries.length - yesCount - noCount} N/A
+          </p>
         </div>
-      )}
+        {score && score !== "N/A" && <ScoreRing score={score} />}
+      </div>
+      <div className="divide-y divide-[var(--color-border)]">
+        {entries.map(([key, val]) => {
+          const item = val as { score?: string; evidence?: string } | string;
+          const itemScore = typeof item === "object" ? item?.score : String(item);
+          const evidence = typeof item === "object" ? item?.evidence : "";
+          return (
+            <div key={key} className="flex items-start gap-3 px-4 py-2.5">
+              {itemScore === "Yes" ? (
+                <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-500" />
+              ) : itemScore === "No" ? (
+                <XCircle size={15} className="mt-0.5 shrink-0 text-red-500" />
+              ) : (
+                <div className="mt-0.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-neutral-200 text-[8px] text-neutral-500">–</div>
+              )}
+              <div className="min-w-0 flex-1">
+                <span className="text-[12px] font-medium text-[var(--color-text)]">
+                  {key.replace(/_/g, " ")}
+                </span>
+                {evidence && (
+                  <p className="mt-0.5 text-[11px] leading-snug text-[var(--color-text-muted)]">
+                    {truncate(String(evidence), 200)}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -131,10 +161,12 @@ export default function QAPage() {
     }
   }
 
+  const totalPages = Math.ceil(total / 20);
+
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[var(--color-text)]">QA & Compliance</h1>
+      <div className="mb-8 animate-fade-in">
+        <h1 className="text-2xl font-bold text-[var(--color-text)]">QA & Compliance</h1>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">
           Score interactions for quality and scan for OWASP compliance violations
         </p>
@@ -142,81 +174,119 @@ export default function QAPage() {
 
       <div className="grid grid-cols-5 gap-6">
         {/* Ticket selection */}
-        <div className="col-span-2">
-          <div className="mb-3 flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-[var(--color-text)]">Closed Tickets</h2>
-            <span className="text-xs text-[var(--color-text-muted)]">({total})</span>
-          </div>
+        <div className="col-span-2 animate-fade-in-delay-1">
+          <div className="card overflow-hidden">
+            <div className="border-b border-[var(--color-border)] px-4 py-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-[var(--color-text)]">Closed Tickets</h2>
+                <span className="badge bg-neutral-100 text-[var(--color-text-muted)]">{total}</span>
+              </div>
+              <div className="relative mt-2">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                <input
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  placeholder="Search tickets…"
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] py-2 pl-9 pr-3 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none"
+                />
+              </div>
+            </div>
 
-          <div className="relative mb-3">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <input
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search tickets…"
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] py-2 pl-9 pr-3 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none"
-            />
-          </div>
+            <div className="max-h-[calc(100vh-22rem)] divide-y divide-[var(--color-border)] overflow-y-auto">
+              {tickets.map((tk) => (
+                <button
+                  key={tk.Ticket_Number}
+                  onClick={() => handleScore(tk.Ticket_Number)}
+                  className={cn(
+                    "flex w-full items-start gap-2.5 px-4 py-3 text-left transition-colors",
+                    selectedTicket === tk.Ticket_Number
+                      ? "bg-purple-50"
+                      : "hover:bg-neutral-50",
+                  )}
+                >
+                  <FileText size={14} strokeWidth={1.6} className="mt-0.5 shrink-0 text-emerald-500" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-[var(--color-text)]">
+                      {truncate(tk.Subject || tk.Ticket_Number, 50)}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[10px] text-[var(--color-text-muted)]">
+                      {tk.Ticket_Number}
+                    </p>
+                  </div>
+                  {selectedTicket === tk.Ticket_Number && (
+                    <div className="mt-1 h-2 w-2 rounded-full bg-[var(--color-primary)] pulse-glow" />
+                  )}
+                </button>
+              ))}
+            </div>
 
-          <div className="max-h-[calc(100vh-18rem)] space-y-1.5 overflow-y-auto">
-            {tickets.map((tk) => (
-              <button
-                key={tk.Ticket_Number}
-                onClick={() => handleScore(tk.Ticket_Number)}
-                className={cn(
-                  "flex w-full items-start gap-2.5 rounded-md border p-3 text-left transition-colors",
-                  selectedTicket === tk.Ticket_Number
-                    ? "border-[var(--color-accent)] bg-neutral-50"
-                    : "border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-neutral-50",
-                )}
-              >
-                <FileText size={14} strokeWidth={1.6} className="mt-0.5 shrink-0 text-emerald-500" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-[var(--color-text)]">
-                    {truncate(tk.Subject || tk.Ticket_Number, 60)}
-                  </p>
-                  <p className="mt-0.5 font-mono text-[10px] text-[var(--color-text-muted)]">
-                    {tk.Ticket_Number}
-                  </p>
-                </div>
-              </button>
-            ))}
+            {/* Ticket pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-[var(--color-border)] px-4 py-2">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="p-1 text-[var(--color-text-muted)] disabled:opacity-30"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-[11px] text-[var(--color-text-muted)]">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="p-1 text-[var(--color-text-muted)] disabled:opacity-30"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* QA Results */}
-        <div className="col-span-3">
+        <div className="col-span-3 animate-fade-in-delay-2">
           {scoring ? (
-            <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-              <Loader2 size={24} className="animate-spin text-[var(--color-accent)]" />
-              <p className="text-xs text-[var(--color-text-muted)]">Scoring interaction & checking compliance…</p>
+            <div className="card flex h-72 flex-col items-center justify-center gap-3">
+              <Loader2 size={28} className="animate-spin text-[var(--color-primary)]" />
+              <p className="text-sm font-medium text-[var(--color-text)]">Analyzing interaction quality…</p>
+              <p className="text-xs text-[var(--color-text-muted)]">Running QA rubric + OWASP compliance checks</p>
             </div>
           ) : qaResult ? (
             <div className="space-y-4">
               {/* Header */}
-              <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                <div className="flex items-center justify-between">
+              <div className="card gradient-hero p-5">
+                <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-sm font-semibold text-[var(--color-text)]">
-                      QA Score: {qaResult.ticket_number}
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-primary)]">
+                      QA Score
+                    </p>
+                    <h3 className="mt-1 text-lg font-bold text-[var(--color-text)]">
+                      {qaResult.ticket_number}
                     </h3>
                     <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                      Mode: {qaResult.Evaluation_Mode || "N/A"}
+                      Evaluation Mode: {qaResult.Evaluation_Mode || "N/A"}
                     </p>
                   </div>
                   {qaResult.Overall_Weighted_Score && qaResult.Overall_Weighted_Score !== "N/A" && (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-accent)]">
-                      <span className="text-sm font-bold text-white">{qaResult.Overall_Weighted_Score}</span>
-                    </div>
+                    <ScoreRing score={qaResult.Overall_Weighted_Score} />
                   )}
                 </div>
 
                 {qaResult.QA_Recommendation && (
-                  <div className="mt-3 rounded-md bg-neutral-50 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                      Recommendation
-                    </p>
-                    <p className="mt-0.5 text-xs text-[var(--color-text)]">{qaResult.QA_Recommendation}</p>
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/80 px-3 py-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                      Recommendation:
+                    </span>
+                    <span className={cn(
+                      "badge font-semibold",
+                      qaResult.QA_Recommendation === "Keep doing" ? "bg-emerald-100 text-emerald-700" :
+                      qaResult.QA_Recommendation === "Coaching needed" ? "bg-amber-100 text-amber-700" :
+                      "bg-red-100 text-red-700",
+                    )}>
+                      {qaResult.QA_Recommendation}
+                    </span>
                   </div>
                 )}
 
@@ -228,31 +298,44 @@ export default function QAPage() {
               </div>
 
               {/* QA Sections */}
-              {qaResult.Interaction_QA && Object.keys(qaResult.Interaction_QA).length > 0 && (
-                <QASection title="Interaction QA" data={qaResult.Interaction_QA as Record<string, unknown>} />
+              {qaResult.Interaction_QA && (
+                <QASection
+                  title="Interaction QA (Call/Chat)"
+                  data={qaResult.Interaction_QA as Record<string, unknown>}
+                  accentClass="gradient-blue"
+                />
               )}
-              {qaResult.Case_QA && Object.keys(qaResult.Case_QA).length > 0 && (
-                <QASection title="Case QA" data={qaResult.Case_QA as Record<string, unknown>} />
+              {qaResult.Case_QA && (
+                <QASection
+                  title="Case QA (Documentation)"
+                  data={qaResult.Case_QA as Record<string, unknown>}
+                  accentClass="gradient-green"
+                />
               )}
 
               {/* Red Flags */}
               {qaResult.Red_Flags && (
-                <div className="rounded-md border border-red-200 bg-red-50 p-4">
-                  <div className="flex items-center gap-2">
+                <div className="card overflow-hidden">
+                  <div className="flex items-center gap-2 bg-red-50 px-4 py-3">
                     <ShieldAlert size={16} className="text-red-600" />
-                    <h4 className="text-xs font-semibold text-red-800">Red Flags (Autozero)</h4>
+                    <h4 className="text-xs font-bold text-red-800">Red Flags (Autozero if Yes)</h4>
                   </div>
-                  <div className="mt-2 space-y-1.5">
+                  <div className="divide-y divide-[var(--color-border)]">
                     {Object.entries(qaResult.Red_Flags).map(([key, val]) => (
-                      <div key={key} className="flex items-center gap-2 text-[11px]">
+                      <div key={key} className="flex items-center gap-3 px-4 py-2.5 text-[12px]">
                         {val.score === "Yes" ? (
-                          <XCircle size={13} className="text-red-600" />
+                          <XCircle size={15} className="shrink-0 text-red-600" />
+                        ) : val.score === "No" ? (
+                          <CheckCircle2 size={15} className="shrink-0 text-emerald-500" />
                         ) : (
-                          <CheckCircle2 size={13} className="text-emerald-500" />
+                          <div className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-neutral-200 text-[8px]">–</div>
                         )}
-                        <span className={val.score === "Yes" ? "font-medium text-red-800" : "text-red-700"}>
+                        <span className={cn("font-medium", val.score === "Yes" ? "text-red-700" : "text-[var(--color-text)]")}>
                           {key.replace(/_/g, " ")}
                         </span>
+                        {val.evidence && val.evidence !== "No violations detected" && (
+                          <span className="ml-auto text-[11px] text-[var(--color-text-muted)]">{truncate(val.evidence, 60)}</span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -261,78 +344,74 @@ export default function QAPage() {
 
               {/* OWASP Compliance */}
               {qaResult.owasp_checks && (
-                <div className={cn(
-                  "rounded-md border p-4",
-                  qaResult.owasp_checks.compliant
-                    ? "border-emerald-200 bg-emerald-50"
-                    : "border-red-200 bg-red-50",
-                )}>
-                  <div className="flex items-center gap-2">
+                <div className={cn("card overflow-hidden")}>
+                  <div className={cn(
+                    "flex items-center gap-2 px-4 py-3",
+                    qaResult.owasp_checks.compliant ? "bg-emerald-50" : "bg-red-50",
+                  )}>
                     {qaResult.owasp_checks.compliant ? (
                       <ShieldCheck size={16} className="text-emerald-600" />
                     ) : (
                       <ShieldAlert size={16} className="text-red-600" />
                     )}
                     <h4 className={cn(
-                      "text-xs font-semibold",
+                      "text-xs font-bold",
                       qaResult.owasp_checks.compliant ? "text-emerald-800" : "text-red-800",
                     )}>
-                      OWASP Compliance {qaResult.owasp_checks.compliant ? "— Passed" : "— Violations Found"}
+                      OWASP Compliance {qaResult.owasp_checks.compliant ? "— All Clear" : "— Findings Detected"}
                     </h4>
+                    <div className="ml-auto flex gap-1.5">
+                      {qaResult.owasp_checks.owasp_frameworks.map((fw) => (
+                        <span key={fw} className="badge bg-white/80 text-[var(--color-text-muted)]">{fw}</span>
+                      ))}
+                    </div>
                   </div>
 
-                  {/* Frameworks */}
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {qaResult.owasp_checks.owasp_frameworks.map((fw) => (
-                      <span key={fw} className="rounded-full bg-white/60 px-2 py-0.5 text-[10px] font-medium">
-                        {fw}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Checks run */}
-                  <div className="mt-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
-                      Checks Performed
+                  <div className="px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                      {qaResult.owasp_checks.checks_run.length} Checks Performed
                     </p>
-                    <div className="mt-1 flex flex-wrap gap-1.5">
+                    <div className="mt-2 grid grid-cols-2 gap-1.5">
                       {qaResult.owasp_checks.checks_run.map((check) => (
-                        <span key={check} className="flex items-center gap-1 text-[11px]">
-                          <CheckCircle2 size={11} className="text-emerald-500" />
-                          {check}
+                        <span key={check} className="flex items-center gap-1.5 text-[11px]">
+                          <CheckCircle2 size={12} className="shrink-0 text-emerald-500" />
+                          <span className="text-[var(--color-text)]">{check}</span>
                         </span>
                       ))}
                     </div>
                   </div>
 
-                  {/* Findings */}
                   {qaResult.owasp_checks.findings.length > 0 && (
-                    <div className="mt-3 space-y-2">
+                    <div className="border-t border-[var(--color-border)] px-4 py-3">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-red-600">
-                        Findings
+                        {qaResult.owasp_checks.findings.length} Finding(s)
                       </p>
-                      {qaResult.owasp_checks.findings.map((f, i) => (
-                        <div key={i} className="rounded-md bg-white/60 p-2.5">
-                          <div className="flex items-center gap-2">
-                            <AlertTriangle size={12} className="text-red-500" />
-                            <span className="text-[11px] font-medium text-red-800">{f.category}</span>
-                            <SeverityBadge severity={f.severity} />
+                      <div className="mt-2 space-y-2">
+                        {qaResult.owasp_checks.findings.map((f, i) => (
+                          <div key={i} className="rounded-lg border border-red-100 bg-red-50/50 p-3">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle size={13} className="text-red-500" />
+                              <span className="text-[12px] font-semibold text-red-800">{f.category}</span>
+                              <SeverityBadge severity={f.severity} />
+                            </div>
+                            <p className="mt-1 text-[11px] text-red-700">{f.description}</p>
+                            <p className="mt-0.5 font-mono text-[10px] text-red-400">{f.owasp_ref}</p>
                           </div>
-                          <p className="mt-1 text-[11px] text-red-700">{f.description}</p>
-                          <p className="mt-0.5 font-mono text-[10px] text-red-500">{f.owasp_ref}</p>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-              <ShieldCheck size={28} strokeWidth={1.2} className="text-[var(--color-text-muted)]" />
-              <p className="text-sm text-[var(--color-text-muted)]">Select a ticket to score</p>
-              <p className="text-xs text-[var(--color-text-muted)]">
-                QA scoring uses the provided rubric + OWASP compliance checks
+            <div className="card flex h-72 flex-col items-center justify-center gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-purple">
+                <ShieldCheck size={24} strokeWidth={1.4} className="text-purple-600" />
+              </div>
+              <p className="text-sm font-medium text-[var(--color-text)]">Select a ticket to score</p>
+              <p className="max-w-xs text-center text-xs text-[var(--color-text-muted)]">
+                QA scoring evaluates interaction & case quality using the rubric, then runs OWASP compliance checks
               </p>
             </div>
           )}
