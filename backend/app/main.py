@@ -36,6 +36,7 @@ from .models import (
 from .services import (
     check_owasp_compliance,
     copilot_answer,
+    detect_gaps,
     generate_kb_draft,
     score_qa,
 )
@@ -370,6 +371,70 @@ async def review_event(action: ReviewAction):
             )
 
     return {"data": event, "message": f"Event {action.event_id} {new_status.lower()}"}
+
+
+@app.post("/api/learning/scan-gaps")
+async def scan_for_gaps():
+    """Run gap detection across all resolved Tier 3 tickets and create new learning events."""
+    tickets = state["data"].get("Tickets", [])
+    vs = state["vector_store"]
+
+    gaps = detect_gaps(tickets, vs, threshold=state["settings"].similarity_threshold)
+
+    existing_tickets = {e["ticket_number"] for e in state["learning_events"]}
+    new_events = []
+    for gap in gaps:
+        if gap["ticket_number"] in existing_tickets:
+            continue
+        event_id = f"LEARN-AUTO-{len(state['learning_events']) + len(new_events) + 1:04d}"
+        new_event = {
+            "event_id": event_id,
+            "ticket_number": gap["ticket_number"],
+            "conversation_id": state["conversations"].get(gap["ticket_number"], {}).get("Conversation_ID", ""),
+            "detected_gap": f"No KB match above {state['settings'].similarity_threshold:.0%} for: {gap['subject'][:100]}",
+            "proposed_kb_id": f"KB-AUTO-{len(state['learning_events']) + len(new_events) + 1:04d}",
+            "draft_summary": f"Auto-detected gap for: {gap['subject']}",
+            "status": "Pending",
+            "reviewer_role": "",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        new_events.append(new_event)
+
+    state["learning_events"].extend(new_events)
+
+    return {
+        "data": {
+            "gaps_scanned": len(tickets),
+            "new_gaps_found": len(new_events),
+            "total_events": len(state["learning_events"]),
+        },
+        "message": f"Scan complete: {len(new_events)} new knowledge gaps detected",
+    }
+
+
+@app.post("/api/learning/report-gap")
+async def report_gap_from_copilot(payload: dict):
+    """Create a learning event when Copilot has low confidence on a question."""
+    question = payload.get("question", "")
+    confidence = payload.get("confidence", 0)
+    if not question:
+        raise HTTPException(400, "No question provided")
+
+    event_id = f"LEARN-COPILOT-{len(state['learning_events']) + 1:04d}"
+    new_event = {
+        "event_id": event_id,
+        "ticket_number": "",
+        "conversation_id": "",
+        "detected_gap": f"Copilot low confidence ({confidence:.0%}) on: {question[:200]}",
+        "proposed_kb_id": "",
+        "draft_summary": f"User question not well covered: {question[:200]}",
+        "status": "Pending",
+        "reviewer_role": "",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    state["learning_events"].append(new_event)
+
+    return {"data": new_event, "message": "Gap reported from Copilot"}
 
 
 # ---------------------------------------------------------------------------

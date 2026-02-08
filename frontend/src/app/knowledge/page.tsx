@@ -19,7 +19,7 @@ export default function KnowledgePage() {
   const [graphWidth, setGraphWidth] = useState(800);
 
   useEffect(() => {
-    fetchKnowledgeGraph(150)
+    fetchKnowledgeGraph(40)
       .then(setGraphData)
       .catch(() => {});
   }, []);

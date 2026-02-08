@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, FileText, ExternalLink } from "lucide-react";
-import { askCopilot, type CopilotResponse, type SourceDocument } from "@/lib/api";
+import { Send, Bot, User, FileText, ExternalLink, AlertCircle } from "lucide-react";
+import { askCopilot, reportGapFromCopilot, type CopilotResponse, type SourceDocument } from "@/lib/api";
 import { cn, truncate, nodeColor } from "@/lib/utils";
 
 interface Message {
@@ -167,6 +167,21 @@ export default function CopilotPage() {
                         </p>
                       ))}
                     </div>
+
+                    {/* Low confidence — report gap */}
+                    {msg.response && msg.response.confidence < 0.5 && (
+                      <button
+                        onClick={async () => {
+                          const q = messages.filter(m => m.role === "user").pop()?.content ?? "";
+                          await reportGapFromCopilot(q, msg.response!.confidence);
+                          alert("Knowledge gap reported! Check the Learning page to review it.");
+                        }}
+                        className="mt-3 flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-700 transition-colors hover:bg-amber-100"
+                      >
+                        <AlertCircle size={13} />
+                        Low confidence — Report as knowledge gap
+                      </button>
+                    )}
 
                     {/* Source documents */}
                     {msg.response && msg.response.sources.length > 0 && (

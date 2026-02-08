@@ -253,53 +253,61 @@ def generate_kb_draft(
 # QA Scoring
 # ---------------------------------------------------------------------------
 
-QA_SYSTEM_COMPACT = """You are a QA evaluator for customer support interactions in property management.
-Score this interaction. You MUST respond with ONLY valid JSON — no markdown, no code fences.
+QA_SYSTEM_COMPACT = """You are a STRICT QA evaluator for customer support in property management.
+You MUST respond with ONLY valid JSON. Be CRITICALLY honest — do NOT default to "Yes".
 
-Use this structure:
+CRITICAL SCORING RULES:
+- Score "No" if evidence is weak, generic, or missing. Do NOT be generous.
+- A typical well-handled case should score 60-80%, not 100%.
+- Score "No" for Engagement_Personalization if the agent did NOT use the customer's name or show genuine empathy beyond a template.
+- Score "No" for Objection_Handling if there were no objections OR the agent did not proactively address concerns.
+- Score "No" for Timeliness if there is no explicit follow-up plan or SLA mention.
+- Score "No" for Customer_Facing_Clarity if resolution notes are technical/internal and not customer-readable.
+- Score "No" for References_Knowledge if KB_Article_ID or Script_ID fields are missing when they should be present.
+- Score "No" for Ownership_Signals if there is no explicit escalation plan or callback commitment.
+- Each "Yes" MUST cite a specific quote. Each "No" MUST explain what was missing.
+- Final_Weighted_Score = (count of Yes) / (count of Yes + No) * 100, rounded.
+
+JSON structure:
 {
   "Evaluation_Mode": "Both" or "Case",
   "Interaction_QA": {
-    "Conversational_Professional": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Engagement_Personalization": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Tone_Pace": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Language": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Objection_Handling": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Delivered_Expected_Outcome": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Critical_Thinking": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Accurate_Information": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Effective_Resources": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Timeliness": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
+    "Conversational_Professional": {"score": "Yes/No/N/A", "evidence": "quote or explanation"},
+    "Engagement_Personalization": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Tone_Pace": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Language": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Objection_Handling": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Delivered_Expected_Outcome": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Critical_Thinking": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Accurate_Information": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Effective_Resources": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Timeliness": {"score": "Yes/No/N/A", "evidence": "..."},
     "Final_Weighted_Score": "XX%"
   },
   "Case_QA": {
-    "Clear_Problem_Summary": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Captured_Key_Context": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Action_Log_Completeness": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Correct_Categorization": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Customer_Facing_Clarity": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Resolution_Specific": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Approved_Process": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Technical_Accuracy": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "References_Knowledge": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
-    "Ownership_Signals": {"score": "Yes" or "No" or "N/A", "evidence": "brief quote"},
+    "Clear_Problem_Summary": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Captured_Key_Context": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Action_Log_Completeness": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Correct_Categorization": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Customer_Facing_Clarity": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Resolution_Specific": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Approved_Process": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Technical_Accuracy": {"score": "Yes/No/N/A", "evidence": "..."},
+    "References_Knowledge": {"score": "Yes/No/N/A", "evidence": "..."},
+    "Ownership_Signals": {"score": "Yes/No/N/A", "evidence": "..."},
     "Final_Weighted_Score": "XX%"
   },
   "Red_Flags": {
-    "Account_Documentation_Violation": {"score": "Yes" or "No", "evidence": ""},
-    "Payment_Compliance_PCI_Violation": {"score": "Yes" or "No", "evidence": ""},
-    "Data_Integrity_Confidentiality_Violation": {"score": "Yes" or "No", "evidence": ""},
-    "Misbehavior_Unprofessionalism": {"score": "Yes" or "No", "evidence": ""}
+    "Account_Documentation_Violation": {"score": "Yes/No", "evidence": ""},
+    "Payment_Compliance_PCI_Violation": {"score": "Yes/No", "evidence": ""},
+    "Data_Integrity_Confidentiality_Violation": {"score": "Yes/No", "evidence": ""},
+    "Misbehavior_Unprofessionalism": {"score": "Yes/No", "evidence": ""}
   },
   "Overall_Weighted_Score": "XX%",
-  "Contact_Summary": "2-3 sentence summary of the interaction",
-  "Case_Summary": "2-3 sentence summary of the case",
-  "QA_Recommendation": "Keep doing" or "Coaching needed" or "Escalate" or "Compliance review"
-}
-
-If a transcript is available, evaluate both Interaction_QA and Case_QA.
-If only a ticket is available, set Interaction_QA scores to N/A and evaluate Case_QA only.
-Score "Yes" = criteria met, "No" = criteria failed. Include brief evidence."""
+  "Contact_Summary": "2-3 sentence summary",
+  "Case_Summary": "2-3 sentence summary",
+  "QA_Recommendation": "Keep doing" or "Coaching needed" or "Escalate"
+}"""
 
 
 def score_qa(

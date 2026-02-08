@@ -15,9 +15,11 @@ import {
   fetchLearningEvents,
   reviewEvent,
   generateDraft,
+  scanForGaps,
   type LearningEvent,
   type KBDraft,
 } from "@/lib/api";
+import { Markdown } from "@/components/Markdown";
 import { cn, statusColor, truncate } from "@/lib/utils";
 
 type FilterStatus = "" | "Pending" | "Approved" | "Rejected";
@@ -33,6 +35,8 @@ export default function LearningPage() {
   const [draftLoading, setDraftLoading] = useState(false);
   const [reviewLoading, setReviewLoading] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanResult, setScanResult] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -111,6 +115,40 @@ export default function LearningPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Scan for Gaps trigger */}
+      <div className="card mb-6 flex items-center gap-4 border-purple-200 bg-purple-50/50 p-4">
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-[var(--color-text)]">Trigger the Self-Learning Loop</p>
+          <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+            Scan all resolved Tier 3 tickets for knowledge gaps. New gaps will appear as Pending events for human review.
+          </p>
+          {scanResult && (
+            <p className="mt-2 text-xs font-medium text-emerald-700">{scanResult}</p>
+          )}
+        </div>
+        <button
+          onClick={async () => {
+            setScanLoading(true);
+            setScanResult(null);
+            try {
+              const res = await scanForGaps();
+              setScanResult(res.message);
+              // Reload events
+              const evts = await fetchLearningEvents(filter, 1);
+              setEvents(evts.data);
+              setTotal(evts.meta.total);
+              setPage(1);
+            } catch { setScanResult("Scan failed"); }
+            finally { setScanLoading(false); }
+          }}
+          disabled={scanLoading}
+          className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--color-primary)] px-5 py-2.5 text-xs font-semibold text-white shadow-md shadow-purple-200/50 transition-all hover:shadow-lg disabled:opacity-50"
+        >
+          {scanLoading ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />}
+          Scan for Gaps
+        </button>
       </div>
 
       {/* Filters */}
@@ -226,11 +264,9 @@ export default function LearningPage() {
                     {draft && expandedId === event.event_id && (
                       <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
                         <p className="text-xs font-semibold text-blue-800">Generated KB Draft</p>
-                        <p className="mt-2 text-sm font-medium text-[var(--color-text)]">{draft.title}</p>
-                        <div className="mt-2 max-h-48 overflow-y-auto text-xs leading-relaxed text-[var(--color-text)]">
-                          {draft.body.split("\n").map((line, i) => (
-                            <p key={i} className="mt-1">{line}</p>
-                          ))}
+                        <p className="mt-2 text-base font-semibold text-[var(--color-text)]">{draft.title}</p>
+                        <div className="mt-3 max-h-64 overflow-y-auto rounded-md bg-white p-4">
+                          <Markdown content={draft.body} />
                         </div>
 
                         {/* Lineage */}
