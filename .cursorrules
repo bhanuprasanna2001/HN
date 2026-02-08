@@ -1,0 +1,54 @@
+# SupportMind AI — Build Rules
+
+## Architecture
+- Backend: Python FastAPI (`/backend`) — data pipeline, vector DB, RAG, LLM services
+- Frontend: Next.js 15 App Router (`/frontend`) — minimal, elegant UI
+- Vector DB: ChromaDB with local sentence-transformer embeddings
+- LLM: OpenAI API (configurable model)
+
+## Design System
+- Background: #FAFAFA (off-white)
+- Text: #252525 (near-black)
+- Border: #E5E5E5
+- Accent: #252525 (dark) for primary actions
+- Muted text: #737373
+- Success: #16A34A, Warning: #F59E0B, Error: #DC2626
+- Font: Inter (system fallback: -apple-system, sans-serif)
+- Radius: 8px for cards, 6px for inputs/buttons
+- Spacing: multiples of 4px (0.25rem)
+- No unnecessary color. Minimalistic. Whitespace is a feature.
+
+## Knowledge Graph Node Colors
+- KB Articles: #3B82F6 (blue)
+- Scripts: #8B5CF6 (purple)
+- Tickets: #10B981 (green)
+- Conversations: #F59E0B (amber)
+
+## Code Standards
+
+### Python (Backend)
+- Type hints on all function signatures
+- Pydantic v2 models for all request/response schemas
+- Async endpoints where I/O is involved
+- Constants at module top, no magic strings
+- Docstrings on public functions (one-line unless complex)
+- Error handling: raise HTTPException with clear messages
+- No print() — use logging
+- Group imports: stdlib, third-party, local
+
+### TypeScript (Frontend)
+- Strict TypeScript — no `any` unless absolutely unavoidable
+- Named exports only (no default exports)
+- Props interfaces defined above the component
+- Server Components by default; add "use client" only when needed
+- Tailwind utility classes — no inline styles, no CSS modules
+- Extract repeated class strings into variables
+- No barrel files (index.ts re-exports)
+
+### General
+- Files under 300 lines. Split if larger.
+- Functions under 40 lines. Extract helpers if longer.
+- Name files by what they export: `KnowledgeGraph.tsx`, `rag_service.py`
+- No commented-out code in commits
+- Every API response has a consistent shape: { data, error?, meta? }
+- Environment variables documented in .env.example, never hardcoded

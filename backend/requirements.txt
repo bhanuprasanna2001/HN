@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+openpyxl
+chromadb
+openai
+pydantic
+pydantic-settings
+python-dotenv
+python-multipart

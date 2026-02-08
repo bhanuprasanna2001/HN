@@ -1,0 +1,7 @@
+{
+  "/copilot/page": "app/copilot/page.js",
+  "/knowledge/page": "app/knowledge/page.js",
+  "/learning/page": "app/learning/page.js",
+  "/page": "app/page.js",
+  "/qa/page": "app/qa/page.js"
+}
