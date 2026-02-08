@@ -1,0 +1,3 @@
+[submodule "data/speare-docs"]
+	path = data/speare-docs
+	url = https://github.com/bhanuprasanna2001/speare-docs.git
