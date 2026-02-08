@@ -1,0 +1,96 @@
+---
+globs: pipelines/**/*.py
+---
+
+# Data Pipeline Rules
+
+## Purpose & Tool Split
+The pipeline has TWO tiers of tooling:
+
+1. **pandas + openpyxl** — handles ingestion (Excel parsing, cleaning, JSONL export). This is reliable, fast for our dataset size (< 10K rows), and avoids PySpark JVM startup friction.
+2. **PySpark** — reserved for batch analytics, root cause mining, clustering, and embedding generation at scale. PySpark stays in the project for the scalability narrative ("this pipeline handles millions") and for the analytics features.
+
+## Pipeline Scripts
+
+### `pipelines/ingest.py` — Excel → Structured Data (pandas + openpyxl)
+- Read each Excel tab into a **pandas DataFrame** via `pd.read_excel()` with `openpyxl` engine
+- Clean and normalize:
+  - Strip whitespace from all text fields
+  - Parse datetime fields consistently (UTC)
+  - Normalize tags into arrays (split on comma/semicolon)
+  - Validate foreign keys (Ticket_Number, Script_ID, KB_Article_ID)
+- Output: JSON Lines files in `data/processed/`
+- Corpora produced:
+  1. `kb_corpus.jsonl` — Knowledge_Articles (merged with Existing_Knowledge_Articles, deduplicated by KB_Article_ID)
+  2. `scripts_corpus.jsonl` — Scripts_Master
+  3. `tickets.jsonl` — Tickets with resolved conversations joined
+  4. `questions_ground_truth.jsonl` — Questions tab for eval
+  5. `lineage.jsonl` — KB_Lineage
+  6. `learning_events.jsonl` — Learning_Events
+  7. `placeholders.json` — Placeholder_Dictionary
+- **Why pandas, not Spark**: The Excel is < 10K rows. openpyxl reads it in seconds. No JVM startup, no Spark session overhead. Reliability > elegance for hackathon ingest.
+
+### `pipelines/embed.py` — Generate Embeddings
+- Read corpus JSONL files
+- For each document, create embedding text:
+  - KB articles: `title + " " + body` (truncate to model max tokens)
+  - Scripts: `script_title + " " + script_purpose + " " + script_text_sanitized`
+- Generate embeddings via:
+  - Local: sentence-transformers (batch processing with GPU if available)
+  - API: OpenAI embeddings API (with rate limiting and retry)
+- Output: JSONL with `{id, embedding, metadata}` per document
+- Track embedding generation progress with tqdm
+
+### `pipelines/load_redis.py` — Bulk Load to Redis
+- Connect to Redis Stack
+- Create indexes (FT.CREATE) with schema from redis-vector rule
+- Bulk insert using Redis pipeline (batch size: 500)
+- Verify: compare FT.INFO doc count with source count
+- Log summary: total loaded, time taken, any failures
+
+### `pipelines/analytics.py` — Root Cause Mining (PySpark)
+This is where PySpark earns its place. Use Spark for:
+- TF-IDF on ticket descriptions → cluster recurring issues (Spark MLlib)
+- Frequency analysis: top categories, top modules, top root causes
+- Identify documentation gaps: tickets without KB references
+- Trend analysis: issue frequency over time
+- Batch embedding generation (if using local models — parallelized across Spark workers)
+- Output: JSON summary for the Trust Dashboard
+
+## PySpark Configuration (Analytics Only)
+- Local mode: `SparkSession.builder.master("local[*]")`
+- Keep it simple — no cluster setup for hackathon
+- Memory: `spark.driver.memory=4g` (sufficient for this dataset size)
+- PySpark reads from the JSONL files produced by pandas ingest (not the raw Excel)
+- Spark is used for:
+  1. Demonstrating scalability story ("this pipeline handles millions")
+  2. Batch embedding generation (parallelized)
+  3. Analytics/clustering (MLlib TF-IDF, K-Means)
+  4. Root cause intelligence mining
+
+## Data Validation
+- Validate every join key exists in the target table
+- Log warnings for:
+  - Tickets referencing non-existent Script_IDs
+  - Questions with Target_IDs that don't resolve
+  - KB_Lineage entries pointing to missing sources
+- Never silently drop rows — log and flag
+
+## Running the Pipeline
+```bash
+# From project root
+python -m pipelines.ingest
+python -m pipelines.embed
+python -m pipelines.load_redis
+
+# Or all in sequence
+python -m pipelines.run_all
+```
+
+## Dependencies
+- pandas (ingest + cleaning — primary ETL tool)
+- openpyxl (Excel reading engine for pandas)
+- pyspark (analytics + batch embedding — scalability story)
+- sentence-transformers (local embeddings) OR openai (API embeddings)
+- redis (for loading)
+- tqdm (progress bars)

@@ -1,0 +1,107 @@
+---
+globs: frontend/**/*.{ts,tsx,css}
+---
+
+# Frontend — React + Vite + TypeScript Rules
+
+## Stack
+- **Framework**: React 18+ with TypeScript (strict mode)
+- **Build tool**: Vite
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **State management**: Zustand (lightweight, no boilerplate)
+- **HTTP client**: fetch API (no axios — keep it minimal)
+- **Streaming**: SSE via native `EventSource` API (no WebSockets)
+- **Routing**: React Router v6+
+- **Icons**: Lucide React
+
+## Architecture: Purely Frontend SPA
+- This is a **static SPA** — no SSR, no Next.js, no server-side rendering
+- All data comes from the FastAPI backend via **REST + SSE** (Server-Sent Events)
+- **No WebSockets** — SSE is the streaming mechanism (server → client, auto-reconnect, standard HTTP)
+- The frontend NEVER directly accesses Redis, LLM APIs, or any backend service
+- Build output is static HTML/JS/CSS served by nginx (or any static server)
+
+## Four Core Pages
+1. **Ask** (`/`) — Main interaction page
+   - Text input for support questions
+   - Streaming response display (token-by-token via SSE `EventSource`)
+   - Inline citation chips linking to evidence
+   - Confidence indicator
+   - Triage badge (KB / Script / Escalate)
+2. **Evidence** (`/evidence`) — Retrieval transparency
+   - Top-k retrieval results with relevance scores
+   - Source document viewer (KB article or Script)
+   - Lineage graph showing KB → Ticket → Conversation chain
+   - Placeholder dictionary tooltip on hover
+3. **Learning Queue** (`/learning`) — HITL approval interface
+   - List of pending KB drafts awaiting review
+   - Side-by-side: original ticket/transcript vs. drafted KB article
+   - Approve / Reject / Edit actions
+   - History of approved/rejected items with timestamps
+4. **Trust Dashboard** (`/dashboard`) — Observability
+   - Embedded Grafana panels (via iframe or API) OR custom charts
+   - Key metrics: retrieval hit@k, citation coverage, policy violations, latency
+   - Drift alerts timeline
+   - QA score distribution
+
+## SSE Streaming Strategy (Runs-Based)
+The frontend interacts via a two-step runs pattern:
+
+1. **Create run**: `POST /api/v1/runs` with `{ question, session_id }` → returns `{ run_id }`
+2. **Subscribe to events**: `new EventSource(/api/v1/runs/{run_id}/events)` → streams structured SSE events
+3. **Fetch final result**: `GET /api/v1/runs/{run_id}` → complete response with citations + trace_id
+
+SSE event handling:
+```typescript
+const es = new EventSource(`${API_BASE}/runs/${runId}/events`);
+es.addEventListener("triage",   (e) => { /* update triage badge */ });
+es.addEventListener("retrieval",(e) => { /* show retrieval results */ });
+es.addEventListener("policy",   (e) => { /* show policy status */ });
+es.addEventListener("token",    (e) => { /* append to streaming answer */ });
+es.addEventListener("citation", (e) => { /* render citation chip */ });
+es.addEventListener("approval_required", (e) => { /* notify HITL needed */ });
+es.addEventListener("done",     (e) => { /* finalize, close EventSource */ });
+es.addEventListener("error",    (e) => { /* show error, close */ });
+```
+
+- `EventSource` provides built-in auto-reconnect (no custom reconnect logic needed)
+- Custom hook: `useRunStream(runId)` encapsulates EventSource lifecycle + Zustand store updates
+- On `done` or `error` event: close the EventSource connection
+- For HITL actions: `POST /api/v1/runs/{run_id}/approve` with decision payload
+
+## Component Patterns
+- All components in `frontend/src/components/` are reusable building blocks
+- Page-level components in `frontend/src/pages/` compose building blocks
+- Use TypeScript interfaces for all props (no `any`)
+- Prefer composition over inheritance
+- Extract hooks for any stateful logic shared across components
+- Loading states: use skeleton components, never blank screens
+- Error states: use error boundaries with retry buttons
+
+## State Management (Zustand)
+- Stores in `frontend/src/stores/`:
+  - `useRunStore` — current run_id, streaming tokens, citations, triage result, run status
+  - `useLearningStore` — pending/approved/rejected KB drafts
+  - `useMetricsStore` — dashboard metrics, drift alerts
+- Keep stores minimal — derive computed values with selectors
+- Never store server state that can be re-fetched (use SWR pattern for cached queries)
+
+## Styling Rules
+- Tailwind CSS for all styling — no inline styles, no CSS modules
+- Use shadcn/ui component library for consistent design system
+- Dark mode support from day one (use Tailwind's `dark:` variants)
+- Responsive design: mobile-first, but optimize for desktop demo
+- Color palette: professional/enterprise feel (slate grays, blue accents, green for success, amber for warnings, red for violations)
+- Typography: Inter or system font stack
+
+## Performance
+- Lazy load pages with React.lazy + Suspense
+- Debounce search/filter inputs (300ms)
+- Virtualize long lists (learning queue, KB articles) with react-virtual if >50 items
+- SSE events processed via store updates outside React render cycle (Zustand handles batching)
+
+## Environment Config
+- `VITE_API_BASE_URL` — Backend REST API base URL (used for both REST and SSE endpoints)
+- `VITE_GRAFANA_URL` — Grafana dashboard URL (for iframe embed)
+- All config via `.env` files (`.env.development`, `.env.production`)
+- Never hardcode backend URLs in components
